@@ -7,7 +7,7 @@ This SDK is a checkout sdk where merchants can integrate into their application 
   
 ### Swift Package Manager  
 1. File > Add Packages  
-2. Add `https://hubtel@dev.azure.com/hubtel/Mobile-Apps/_git/SDK%20Card%20Not%20Present%20iOS`  
+2. Add `https://github.com/hubtel/hubtel-mobile-ios-checkout-sdk`  
   
 ## Getting Started  
 _Objects needed_  
@@ -27,7 +27,7 @@ _Objects needed_
 | **purchaseDescription** (optional)| An optional description attached to the purchase. |  
 ## Integration  
 1. Add the library using SPM (CocoaPods will be supported soon).  
-2. Import `Hubtel_Checkout in your `AppDelegate` file, and implement the `HubtelCheckoutDelegate` protocol.  
+2. Import `Hubtel_Checkout` in your `AppDelegate` file, and implement the `HubtelCheckoutDelegate` protocol.  
 - This protocol requires you to implement three properties:  
 - `salesID`  
 - `apiKey `  
