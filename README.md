@@ -49,8 +49,11 @@ The finishedBankDelegate protocol has a function with a single parameter value o
 `PaymentStatus`: An enum displaying the status of payment.  
 ### PaymentStatus Cases
 `userCancelledPayment`: When the user closes the checkout page without performing any transaction.  
+
 `paymentFailed`: When the user performs a transaction but payment fails.
+
 `paymentSuccessful`: When the user finally pays successfully.
+
 `unknown`: When the user cancels transaction after payment attempt without checking status.
 ### Example  
 ```swift  
