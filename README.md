@@ -67,3 +67,6 @@ extension ViewController: PaymentFinishedDelegate {
 CheckoutViewController.pushController(with navigationController: UINavigationController?, purchaseInfo: PurchaseInfo, delegate: finishedBankDelegate, tintColor: UIColor? = nil)  
 ```  
 Similarly, you have to implement the `PaymentFinishedDelegate` protocol the same way as above.
+
+## Screenshots
+![Fig. 01](https://firebasestorage.googleapis.com/v0/b/newagent-b6906.appspot.com/o/hubtel-mobile-checkout-ios-sdk-image.png?alt=media&token=376d90ab-c416-42a0-8b99-69028378ff72)
