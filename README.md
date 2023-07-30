@@ -1,5 +1,5 @@
 
-# Hubtel Checkout SDK - iOS
+# Hubtel Merchant Checkout SDK - iOS
 
 The Hubtel Checkout Library is a convenient and easy-to-use library that simplifies the process of implementing a checkout flow in your iOS application.
 
