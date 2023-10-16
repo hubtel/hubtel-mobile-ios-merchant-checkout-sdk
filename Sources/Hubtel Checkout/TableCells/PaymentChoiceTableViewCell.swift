@@ -129,6 +129,10 @@ class PaymentChoiceTableViewCell: UITableViewCell {
             image1.installImage(imageString: "")
             image2.installImage(imageString: "checkout_visa_logo", showImage: imageUpdater.showVisa)
             image3.installImage(imageString: "checkout_mastercard_logo", showImage: imageUpdater.showMasterCard)
+        case Strings.others:
+            image1.installImage(imageString: "hubtelLogo")
+            image2.installImage(imageString: "gmoney")
+            image3.installImage(imageString: "zeepay")
         default:
             break
         }

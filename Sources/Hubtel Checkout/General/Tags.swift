@@ -16,4 +16,7 @@ struct Tags{
     static let mobileMoneyTextFieldTag = 1201
     static let mobileMoneySectionCellTag = 10202
     static let receiptHeaderViewTag = 12323
+    static let providerWalletTagSelector = 11161
+    static let contactSelectorTag = 22261
+    static let momoNumberSelectorTag = 333661
 }

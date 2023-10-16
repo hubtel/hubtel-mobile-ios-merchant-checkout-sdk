@@ -15,11 +15,16 @@ enum CellStyles{
     case momoInputs
     case bankCardInputs
     case bottomCell
+    case otherPaymentMethods
 }
 
 enum PaymentType{
     case momo
     case bank
+    case gmoney
+    case zeepay
+    case bankpay
+    case hubtel
 }
 
 struct Section: Equatable{
@@ -56,6 +61,11 @@ public enum PaymentStatus{
     case paymentFailed
     case paymentSuccessful
     case unknown
+}
+
+public struct MobilePaymentProvider{
+    let title: String
+    let provider: String
 }
 
 
@@ -114,18 +124,18 @@ enum PaymentChannel: String{
     case masterCard = "cardnotpresent-mastercard"
     static func getChannel(string: String)->PaymentChannel{
         switch string{
-        case "mtn-gh", "Mtn Mobile Money":
+        case "mtn-gh", "Mtn Mobile Money", "mtn", "MTN Mobile Money":
             return PaymentChannel.mtn
-        case "vodafone-gh-ussd", "Vodafone Ghana":
+        case "vodafone-gh-ussd", "Vodafone Ghana", "vodafone", "Vodafone Cash", "voda":
             return .voda
-        case "airtel-tigo-gh", "tigo-gh", "Airtel Tigo":
+        case "airtel-tigo-gh", "tigo-gh", "Airtel Tigo", "Airtel Tigo Cash":
             return .airtelTigo
         case "masterCard":
             return .masterCard
         case "visaCard":
             return .visa
         default:
-            return .visa
+            return .mtn
         }
     }
 }
@@ -135,10 +145,11 @@ public struct MobileMoneyPaymentRequest: Codable{
         let customerName: String?
         let customerMsisdn: String?
         let channel: String?
-        let amount: Double?
+        let amount: String?
         let primaryCallbackUrl: String?
         let description: String?
         let clientReference: String?
+        var mandateId:String?
 }
 
 struct ApiResponse< T: Codable>: Codable{
@@ -146,6 +157,7 @@ struct ApiResponse< T: Codable>: Codable{
     let message: String?
     let data: T
     let errors: [ErrorStruct]?
+    let responseCode: String? = nil
 }
 
 struct Setup3dsResponse: Codable {
@@ -174,11 +186,90 @@ struct GetFeesBody: Codable{
     let channel: String
 }
 
+struct MakeDirectDebitCallBody: Codable{
+    let channel: String?
+    let customerMsisdn: String?
+    let primaryCallbackUrl: String?
+    let clientReference: String?
+    let amount: String?
+    let description: String?
+    
+}
+
+enum PaymentsStatus: String{
+    case paid
+    case unpaid
+    case failed
+    case pending
+    case expired
+}
+
+struct CheckStatusRespsonse: Codable{
+    let status, transactionID, externalTransactionID: String?
+    let paymentMethod, clientReference: String?
+    let currencyCode: String?
+    let amount: Double?
+    let charges: Double?
+    let amountAfterCharges: Double?
+    let providerDescription: String?
+    var getStatus: PaymentsStatus {
+        switch status?.lowercased(){
+        case "paid":
+            return .paid
+        case "unpaid":
+            return .unpaid
+        case "pending":
+            return .pending
+        case "expired":
+            return .expired
+        default:
+            return .failed
+        }
+    }
+       
+}
 
 struct GetFeesResponse: Codable{
     let name: String?
     let amount: Double?
 }
+
+
+enum CheckoutType: String{
+    case receivemoneyprompt
+    case directdebit
+    case preapprovalconfirm
+}
+
+struct NewGetFeesResponse: Codable {
+    let fees: Double
+    let amountPayable: Double
+    let checkoutType: String
+    
+    var getCheckoutType: CheckoutType{
+        switch checkoutType.lowercased(){
+        case CheckoutType.receivemoneyprompt.rawValue:
+            return .receivemoneyprompt
+        case CheckoutType.directdebit.rawValue:
+            return .directdebit
+        case CheckoutType.preapprovalconfirm.rawValue:
+            return .preapprovalconfirm
+        default:
+            return .receivemoneyprompt
+        }
+    }
+}
+
+struct MobileMoneyWalletOptions {
+    var image: String?
+    var title: String?
+    var subtitle: String?
+    var value: String? = nil
+    var isSelected = false
+}
+
+
+
 
 @objc class GetFeesUpdateView: NSObject{
     let name: String?
@@ -186,6 +277,21 @@ struct GetFeesResponse: Codable{
     init(name: String?, amount: Double?) {
         self.name = name
         self.amount = amount
+    }
+}
+
+struct OtpBodyRequest: Codable {
+    let customerMsisdn, hubtelPreApprovalId, clientReferenceId, otpCode: String?
+}
+
+struct OtpResponse: Codable {
+    let customerMsisdn, verificationType, preapprovalStatus, clientReferenceID: String?
+    let skipOtp: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case customerMsisdn, verificationType, preapprovalStatus
+        case clientReferenceID = "clientReferenceId"
+        case skipOtp
     }
 }
 
@@ -210,8 +316,21 @@ struct Enroll3dsResponse: Codable{
         }
         return  jsonDictionary
     }
+    var cardStatus: String?
     
 }
+
+struct PreApprovalResponse: Codable {
+    let preapprovalStatus,
+        verificationType,
+        clientReference,
+        hubtelPreapprovalId,
+        otpPrefix: String?,
+        customerMsisdn: String?,
+        skipOtp: Bool?
+    
+}
+
 
 struct CardWhiteListResponse: Codable{
     let id, status : String?
@@ -245,12 +364,24 @@ struct MomoResponse: Codable{
       let transactionId: String?
       let charges: Double?
       let amount: Double?
-        let amountAfterCharges: Double?
-        let amountCharged: Double?
-        let deliveryFee: Double?
-        let description: String? 
-        let clientReference: String?
+      let amountAfterCharges: Double?
+      let amountCharged: Double?
+      let deliveryFee: Double?
+      let description: String?
+      let clientReference: String?
+    let hubtelPreapprovalId,
+    otpPrefix: String?,
+    customerMsisdn: String?,
+    skipOtp: Bool?
+    let verificationType: String?
+    
 }
+
+enum CardStatus: String{
+    case authSuccessFull = "AUTHENTICATION_SUCCESSFUL"
+    case pendingAuthentication = "PENDING_AUTHENTICATION"
+}
+
 
 struct MockFailureStructure: Codable{
     let failure: String
@@ -261,10 +392,10 @@ struct TransactionStatusResponse:Codable{
     var mobileNumber: String?
 }
 
-class BankDetails: NSObject, NSSecureCoding{
-    static var supportsSecureCoding: Bool {return true}
+public class BankDetails: NSObject, NSSecureCoding{
+    public static var supportsSecureCoding: Bool {return true}
     
-    func encode(with coder: NSCoder) {
+    public func encode(with coder: NSCoder) {
         coder.encode(cardHolderName, forKey: "cardHolderName")
         coder.encode(cardHolderNumber, forKey: "cardHolderNumber")
         coder.encode(cvv, forKey: "cvv")
@@ -272,7 +403,7 @@ class BankDetails: NSObject, NSSecureCoding{
         coder.encode(expiryMonth, forKey: "expiryMonth")
     }
     
-    required init?(coder: NSCoder) {
+    required public init?(coder: NSCoder) {
         cardHolderName = coder.decodeObject(of: NSString.self, forKey: "cardHolderName")! as String
         cardHolderNumber = coder.decodeObject(of: NSString.self, forKey:  "cardHolderNumber")! as String
         cvv = coder.decodeObject(of: NSString.self, forKey: "cvv")! as String
@@ -287,7 +418,8 @@ class BankDetails: NSObject, NSSecureCoding{
     let cvv: String
     let expiryMonth: String
     let expiryYear: String
-    init(cardHolderName: String, cardHolderNumber: String, cvv: String, expiryMonth: String, expiryYear: String){
+    
+    public init(cardHolderName: String, cardHolderNumber: String, cvv: String, expiryMonth: String, expiryYear: String){
         self.cardHolderName = cardHolderName
         self.cardHolderNumber = cardHolderNumber
         self.cvv = cvv
@@ -296,22 +428,39 @@ class BankDetails: NSObject, NSSecureCoding{
         super.init()
     }
     
-    func save(){
+    public func save(){
         let dataToSave = try? NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
         UserDefaults.standard.set(dataToSave, forKey: Strings.myCard)
     }
     
-    func saveToDb(){
-        if let data = UserDefaults.standard.data(forKey: "thisKey"){
+    public func saveToDb(){
+        if let data = UserDefaults.standard.data(forKey: "savedBankDetails"){
             var myBankDetails = NSKeyedUnarchiver.unarchiveObject(with: data) as? [BankDetails] ?? []
+            
+            if myBankDetails.contains(where: { detail in
+                detail.cardHolderNumber ==
+                self.cardHolderNumber
+            }) {return}
+            
             myBankDetails.append(self)
             let datataToSave = try? NSKeyedArchiver.archivedData(withRootObject: myBankDetails, requiringSecureCoding: true)
-            UserDefaults.standard.set(datataToSave, forKey: "thisKey")
+            UserDefaults.standard.set(datataToSave, forKey: "savedBankDetails")
         }else{
             let datataToSave = try? NSKeyedArchiver.archivedData(withRootObject: [self], requiringSecureCoding: true)
-            UserDefaults.standard.set(datataToSave, forKey: "thisKey")
+            UserDefaults.standard.set(datataToSave, forKey: "savedBankDetails")
         }
         
+    }
+    
+    static func getDetails()->[BankDetails]?{
+        if let data = UserDefaults.standard.data(forKey: "savedBankDetails"){
+            
+            let myBankDetails = NSKeyedUnarchiver.unarchiveObject(with: data) as? [BankDetails] ?? []
+            
+            return myBankDetails
+        }
+        
+        return nil
     }
     
 }
@@ -359,52 +508,66 @@ public struct PurchaseInfo{
 }
 
 struct PaymentOptions{
-    static var options = ["Mtn Mobile Money": "mtn-gh", "Airtel Tigo": "tigo-gh", "Vodafone Ghana": "vodafone-gh-ussd"]
-    static let providerOptions = [(providerName: "Mtn Mobile Money", providerId:"mtn-gh"), (providerName: "Airtel Tigo", providerId:"tigo-gh"),(providerName: "Vodafone Ghana", providerId:"vodafone-gh-ussd")]
+    
+    static var options = ["MTN Mobile Money": "mtn-gh", "Airtel Tigo": "tigo-gh", "Vodafone Ghana": "vodafone-gh"]
+    
+    static let providerOptions = [(providerName: "MTN Mobile Money", providerId:"mtn-gh"), (providerName: "Airtel Tigo", providerId:"tigo-gh"),(providerName: "Vodafone Ghana", providerId:"vodafone-gh")]
+    
     static var providerOptionsArray:[(String, String)] = []
     
-    static func convertArrayToDict(value: [String])->[String: String]{
-        let mobilePayments = [ "tigo-gh","vodafone-gh", "mtn-gh"]
-        let mappedMobilePayments = mobilePayments.map {
-            if $0 == "tigo-gh"{
-                return "tigo-gh"
-            }
-            if $0 == "vodafone-gh"{
-                return "vodafone-gh-ussd"
-            }
-            return $0
-        }
-
-        let extractedArray = value.filter{mobilePayments.contains($0)}
-        let converted = extractedArray.map{
-            if $0 == "tigo-gh"{
-                return "tigo-gh"
-            }
-            if $0 == "vodafone-gh"{
-                return "vodafone-gh-ussd"
-            }
-            return $0
-        }
-        let finalDict = options.keys.reduce(into: [:]) { partialResult, string in
-        //    print(string)
-        //    print(dict[string])
-            if let value = options[string]{
-                print("\(value):   ", extractedArray.contains(value) )
-                partialResult[string] = converted.contains(value) ? options[string] : nil
-            }
-          
-            
-        }
-        var convertedDictionary: [String: String] = [:]
-            
-            for (key, value) in finalDict {
-                if let stringKey = key as? String, let stringValue = value as? String {
-                    convertedDictionary[stringKey] = stringValue
-                    
-                }
-            }
-            
-        return convertedDictionary
+    
+    static var paymentOptions = ["MTN Mobile Money", "Airtel Tigo", "Vodafone Ghana"]
+    
+    
+    
+    
+    
+//    static func convertArrayToDict(value: [String])->[String: String]{
+//        let mobilePayments = [ "tigo-gh","vodafone-gh", "mtn-gh"]
+//        let mappedMobilePayments = mobilePayments.map {
+//            if $0 == "tigo-gh"{
+//                return "tigo-gh"
+//            }
+//            if $0 == "vodafone-gh"{
+//                return "vodafone-gh-ussd"
+//            }
+//            return $0
+//        }
+//
+//        let extractedArray = value.filter{mobilePayments.contains($0)}
+//        let converted = extractedArray.map{
+//            if $0 == "tigo-gh"{
+//                return "tigo-gh"
+//            }
+//            if $0 == "vodafone-gh"{
+//                return "vodafone-gh-ussd"
+//            }
+//            return $0
+//        }
+//        let finalDict = options.keys.reduce(into: [:]) { partialResult, string in
+//        //    print(string)
+//        //    print(dict[string])
+//            if let value = options[string]{
+//                print("\(value):   ", extractedArray.contains(value) )
+//                partialResult[string] = converted.contains(value) ? options[string] : nil
+//            }
+//
+//
+//        }
+//        var convertedDictionary: [String: String] = [:]
+//
+//            for (key, value) in finalDict {
+//                if let stringKey = key as? String, let stringValue = value as? String {
+//                    convertedDictionary[stringKey] = stringValue
+//
+//                }
+//            }
+//
+//        return convertedDictionary
+//    }
+    
+    static func getPaymentChanel(channelString: String){
+        
     }
     
 }
@@ -458,9 +621,99 @@ enum HubtelEventStoreProperties : String {
 struct PaymentChannelCachedKeys{
     static let isBankAllowed = "bankAllowed"
     static let isMomoAllowed = "momoAllowed"
+    static let isHubtelInternalMerchant = "isHubtelInternalMerchant"
 }
 
 
 
+struct ChannelFetchResponse: Codable{
+    let channels: [String]?
+    let businessId: String?
+    let businessName: String?
+    let businessLogoUrl: String?
+    let requireNationalID: Bool?
+    let isHubtelInternalMerchant: Bool?
+    var merchantRequiresKyc: Bool {
+        return true
+    }
+}
 
+
+@objc class VerificationResponse: NSObject, Codable {
+    let status, fullname, surname, othernames: String?
+    let birthday, gender, motherName, fatherName: String?
+    let region, phone, email, nationalID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status, fullname, surname, othernames, birthday, gender, motherName, fatherName, region, phone, email
+        case nationalID = "nationalId"
+    }
+    
+    func toVerificationBody(customerMsisdn: String)->CustomerVerificationBody{
+        return CustomerVerificationBody(
+            CustomerMobileNumber: customerMsisdn,
+            VerifyIdType: "NationalId",
+            NationalId: nationalID,
+            Fullname: fullname,
+            DateOfBirth: birthday,
+            gender: gender,
+            email: email
+        )
+    }
+    
+}
+
+class ConfirmationResponse:Codable{
+    
+}
+
+struct CustomerVerificationBody: Codable{
+    let CustomerMobileNumber: String?
+    let VerifyIdType: String?
+    let NationalId: String?
+    let Fullname: String?
+    let DateOfBirth: String?
+    let gender: String?
+    let email: String?
+}
+
+enum VerificationStatus: String{
+    case verified
+    case unverified
+}
+
+
+public  class WalletDetails: NSObject{
+    
+}
+
+
+
+struct AddMobileWalletBody: Codable {
+    let accountNo, provider, customerMobileNumber: String
+
+    enum CodingKeys: String, CodingKey {
+        case accountNo, provider
+        case customerMobileNumber = "CustomerMobileNumber"
+    }
+}
+
+
+class MandateIdManager{
+
+    var mandateId: String?{
+        didSet{
+            UserDefaults.standard.set(mandateId, forKey: "mandateIdString")
+        }
+    }
+    
+    private init(){}
+    
+    static let shared = MandateIdManager()
+    
+    func getMandateIdFromCache()->String?{
+       UserDefaults.standard.string(forKey: "mandateIdString")
+    }
+    
+}
 

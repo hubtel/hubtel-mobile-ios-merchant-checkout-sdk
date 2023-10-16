@@ -18,14 +18,24 @@ class CheckTransactionStatusViewController: UIViewController {
     weak var delegate: PaymentFinishedDelegate?
     var imageString: String?
     var provider: String?
+    var transactionDetails: MomoResponse?
+    var clientReference: String?
+    var amountPaid: Double?
+    var amount: Double{
+        Double(transactionDetails?.amount ?? amountPaid ?? 0.00)
+    }
+    
     lazy var viewModel = CheckoutTransactionStatusViewModel(delegate: self)
     
-    static func openTransactionHistory(navController: UINavigationController?, transactionId: String, text: String, provider: String? = nil, delegate: PaymentFinishedDelegate?){
+    static func openTransactionHistory(navController: UINavigationController?, transactionId: String, text: String, provider: String? = nil, delegate: PaymentFinishedDelegate?, transactionDetails: MomoResponse? = nil, clientReference: String? = nil, amountPaid: Double? = nil){
         let controller = CheckTransactionStatusViewController()
         controller.transactionId = transactionId
         controller.setDescriptionLabelText(value: text)
         controller.delegate = delegate
         controller.provider = provider
+        controller.transactionDetails = transactionDetails
+        controller.clientReference = clientReference
+        controller.amountPaid = amountPaid
         navController?.pushViewController(controller, animated: true)
     }
     
@@ -78,6 +88,7 @@ class CheckTransactionStatusViewController: UIViewController {
         stack.alignment = .leading
         stack.translatesAutoresizingMaskIntoConstraints = false
 //        stack.distribution = .fill
+        stack.isHidden = !((provider == "mtn-gh") && CheckOutViewModel.checkoutType == .receivemoneyprompt)
         return stack
     }()
     
@@ -120,7 +131,7 @@ class CheckTransactionStatusViewController: UIViewController {
         self.view.addSubview(descriptionLabel)
         self.view.addSubview(mtnInfoStack)
         setupConstraints()
-        mtnInfoStack.isHidden = !(provider == "mtn-gh")
+//        mtnInfoStack.isHidden = true
         UserSetupRequirements.shared.userCheckStatusReached = true
         
         view.backgroundColor = .white
@@ -145,7 +156,7 @@ class CheckTransactionStatusViewController: UIViewController {
         
         let receiptImageViewConstraints = [
             receiptImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            receiptImageView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: !(provider == "mtn-gh") ? 0 : -100),
+            receiptImageView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant:  !((provider == "mtn-gh") && CheckOutViewModel.checkoutType == .receivemoneyprompt) ? 0 : -100),
         ]
         NSLayoutConstraint.activate(receiptImageViewConstraints)
         
@@ -221,7 +232,14 @@ extension CheckTransactionStatusViewController: ButtonActionDelegate{
         }else{
 
         bottomButton.showLoader(value: true, name: "I HAVE PAID")
-            viewModel.getTransactionStatus(transactionID: self.transactionId ?? "")
+        
+            if CheckOutViewModel.checkoutType == .directdebit{
+                viewModel.checkTransactionStatus(clientReference: self.transactionDetails?.clientReference ?? clientReference  ?? self.transactionId ?? "")
+            }else{
+                viewModel.checkTransactionStatus(clientReference: self.transactionId ?? "")
+            }
+//
+           
         }
     }
     

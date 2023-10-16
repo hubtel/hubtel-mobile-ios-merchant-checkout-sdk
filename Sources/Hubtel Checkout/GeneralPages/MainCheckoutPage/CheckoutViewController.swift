@@ -16,6 +16,7 @@ public class CheckoutViewController: UIViewController {
     lazy var paymentProvider: String = viewModel.providerChannel
     var showBankField: Bool = false
     var showMomoField: Bool = false
+    var showOtherFieldsTab: Bool = false
     static var callBack: (String)->() = {_ in}
     weak var delegate: PaymentFinishedDelegate?
     var salesID =    UserSetupRequirements.shared.salesID
@@ -28,6 +29,16 @@ public class CheckoutViewController: UIViewController {
     var viewHasAlreadyLoaded: Bool = false
     var usesOnlyBankPayment: Bool = false
     var imageUpdateController = ImageUpdatShowerUpdate()
+    var showFees = false
+    var wallets: [Wallet]? = nil
+    var businessImage: String = ""
+    var businessName: String = ""
+    
+    var customerMobileNumber: String?
+    
+    var enterNewMandateId: Bool = false
+  
+    var initCustomerMobilerNumber: String?
    
     
     var data2 : [Section] = [
@@ -57,6 +68,29 @@ public class CheckoutViewController: UIViewController {
         myController.presentationController?.delegate = ModalPresentationDelegate.shared
         customController.present(myController, animated: true)
         General.usePresentation = true
+        
+        
+    }
+    
+    
+    public static func presentCheckoutInternal(from customController: UIViewController, with configuration: HubtelCheckoutConfiguration, and purchaseInfo: PurchaseInfo, delegate: PaymentFinishedDelegate, tintColor: UIColor? = nil, savedBankDetails: BankDetails?){
+        UserSetupRequirements.shared.apiKey = configuration.merchantApiKey
+        UserSetupRequirements.shared.callBackUrl = configuration.callbackUrl
+        UserSetupRequirements.shared.salesID = configuration.salesID
+        UserSetupRequirements.shared.customerPhoneNumber = purchaseInfo.customerMsisDn
+        let controller = CheckoutViewController()
+        controller.order = purchaseInfo
+        controller.viewModel.order = purchaseInfo
+        controller.delegate = delegate
+        Colors.globalColor = tintColor
+        let myController = UINavigationController(rootViewController: controller)
+        myController.presentationController?.delegate = ModalPresentationDelegate.shared
+        customController.present(myController, animated: true)
+        General.usePresentation = true
+        
+        if let savedBankDetails = savedBankDetails{
+            savedBankDetails.saveToDb()
+        }
     }
     
     lazy var bottomButton: CustomButtonView = {
@@ -90,6 +124,7 @@ public class CheckoutViewController: UIViewController {
         tableView.register(BottomCornersTableViewCell.self, forCellReuseIdentifier: BottomCornersTableViewCell.identifier)
         tableView.register(BankPaymentFieldsTableViewCell.self, forCellReuseIdentifier: BankPaymentFieldsTableViewCell.identifier)
         tableView.register(ProviderInfoIntakeTableViewCell.self, forCellReuseIdentifier: ProviderInfoIntakeTableViewCell.identifier)
+        tableView.register(OtherPaymentMethodsTableViewCell.self, forCellReuseIdentifier: OtherPaymentMethodsTableViewCell.identifier)
         tableView.separatorStyle = .none
         navigationController?.navigationBar.prefersLargeTitles = false
         var blackImage: UIImage?
@@ -124,11 +159,33 @@ public class CheckoutViewController: UIViewController {
         
         AnalyticsHelper.recordBeginPurchase(beginPurchase: purchaseAnalytics)
         
+        let name = Notification.Name("doneWithVerification")
+        NotificationCenter.default.addObserver(self, selector: #selector(performMomoPaymentAfterVerification(_:)), name: name, object: nil)
+        
+//        let vc = AddMobileWalletViewController()
+//        self.navigationController?.pushViewController(vc, animated: true)
+        let name4 = Notification.Name(rawValue: "doneAddingWallet")
+        NotificationCenter.default.addObserver(self, selector: #selector(reloadWallets), name: name4, object: nil)
+
+    }
+    
+    @objc func reloadWallets(){
+        self.viewModel.makeGetWallets(customerMsisdn: viewModel.order?.customerMsisDn ?? "")
+    }
+    
+    @objc func performMomoPaymentAfterVerification(_ sender: NSNotification){
+        if let channel = sender.object as? String{
+            print(channel)
+            self.makeMomoRequest(checkoutChannel: channel)
+        }
+       
     }
     
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-       
+//                self.viewModel.makeGetWallets(customerMsisdn: viewModel.order?.customerMsisDn ?? "")
+        
+//       
     }
     
     public override func viewDidAppear(_ animated: Bool) {
@@ -138,11 +195,15 @@ public class CheckoutViewController: UIViewController {
             viewModel.paymentChannelsAllowed()
            viewHasAlreadyLoaded = true
         }
+       
         AnalyticsHelper.recordCheckoutEvent(event: .checkoutPayViewPagePay)
   
 //        bottomButton.validate(false)
     }
     
+//    public override func viewDidDisappear(_ animated: Bool) {
+//        ReceiptHeaderView.openFees = false
+//    }
     @objc func handleKeyboardNotification(_ notification: Notification) {
         if let userInfo = notification.userInfo {
             let keyboardFrame = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as AnyObject).cgRectValue
@@ -226,23 +287,58 @@ extension CheckoutViewController: ViewStatesDelegate{
         if value{
             bottomButton.showLoader(value: true)
         }else{
-            bottomButton.showLoader(value: false, name: "PAY")
+            if CheckOutViewModel.checkoutType == .preapprovalconfirm{
+                bottomButton.showLoader(value: false, name: Strings.agreeAndContinue)
+               
+            }else{
+                bottomButton.showLoader(value: false, name: "PAY")
+            }
         }
     }
     
-    func updateFeesValue(value: Double) {
-        (self.view.viewWithTag(Tags.receiptHeaderViewTag) as? ReceiptHeaderView)?.setFees(value: String(value))
-        ( self.view.viewWithTag(Tags.receiptHeaderViewTag) as? ReceiptHeaderView)?.updateTotalValue(value: String(  self.order?.updateItemPrice(value: value) ?? 0.00))
-    }
     
-    func updateFeesValue(value: [GetFeesUpdateView]){
-        print(value)
-//        (self.view.viewWithTag(Tags.receiptHeaderViewTag) as? ReceiptHeaderView)?.setupFees(value: value)
-        CheckOutViewModel.allowPayment = true
-        self.tableView.reloadRows(at: [IndexPath(row: 0, section: 0)], with: .automatic)
-        self.tableView.performBatchUpdates(nil)
+    func handleBusinessInfoPassed(businessId: String?, businessName: String?, businessImageUrl: String?) {
+        
+        
+        self.businessImage = businessImageUrl ?? ""
+        
+        self.businessName = businessName ?? ""
+        
+        
+        
+        
         
     }
+    
+    
+    
+
+    
+    func updateFeesValue(value: [GetFeesUpdateView]){
+        
+        print(value)
+        
+//        (self.view.viewWithTag(Tags.receiptHeaderViewTag) as? ReceiptHeaderView)?.setupFees(value: value)
+        viewModel.fees =  value
+        self.tableView.reloadRows(at: [IndexPath(row: 0, section: 0)], with: .automatic)
+        
+        
+        CheckOutViewModel.allowPayment = true
+        
+        if wallets != nil && paymentType == .momo{
+            bottomButton.validate(true)
+            return
+        }
+        
+        if paymentType == .zeepay || paymentType == .hubtel || paymentType == .gmoney {
+            bottomButton.validate(true)
+            return
+        }
+      
+        
+        
+    }
+    
     func showErrorMessagetToUser(message: String) {
         if let progress = progress{
             progress.dismiss(animated: true){
@@ -253,14 +349,31 @@ extension CheckoutViewController: ViewStatesDelegate{
         }
     }
     
+    
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
         self.progress = showProgress(isCancellable: true)
     }
+    
+    
     
     func dismissLoaderToPerformAnotherAction() {
         progress?.dismiss(animated: true){
             
         }
+    }
+    
+    func showHideFees(value: Bool){
+        
+        showFees = value
+        
+        print(value)
+        
+        self.viewModel.feesToUpdateFrontend = showFees ? viewModel.fees : []
+        
+        self.tableView.reloadRows(at: [IndexPath(row: 0, section: 0)], with: .automatic)
+        
+        self.tableView.performBatchUpdates(nil)
+        
     }
     
     func dismissLoaderToPerformWebCheckout() {
@@ -270,10 +383,46 @@ extension CheckoutViewController: ViewStatesDelegate{
     }
     
     func dismissLoaderToPerformMomoPayment(){
-        progress?.dismiss(animated: true){
-            self.showAlert(with: Strings.success, message: Strings.setMomoPrompt(with: self.viewModel.momoNumber ?? "")){ action in
-                CheckTransactionStatusViewController.openTransactionHistory(navController: self.navigationController, transactionId: self.viewModel.momoResponse?.clientReference ?? "", text: Strings.setMomoPrompt(with: self.viewModel.momoNumber ?? ""),provider: self.paymentProvider, delegate: self.delegate)
+        progress?.dismiss(animated: true){ [self] in
+            
+            if paymentType == .zeepay || paymentType == .hubtel || paymentType == .gmoney{
+                CheckTransactionStatusViewController.openTransactionHistory(navController: self.navigationController, transactionId: self.viewModel.momoResponse?.clientReference ?? "", text: Strings.directDebitText,provider: "", delegate: self.delegate, transactionDetails: self.viewModel.momoResponse, clientReference: self.viewModel.order?.clientReference, amountPaid: self.viewModel.totalAmount)
+                return
             }
+            
+            if CheckOutViewModel.checkoutType == .receivemoneyprompt{
+                self.showAlert(with: Strings.success, message: Strings.setMomoPrompt(with: self.viewModel.momoNumber ?? "")){ action in
+                    CheckTransactionStatusViewController.openTransactionHistory(navController: self.navigationController, transactionId: self.viewModel.momoResponse?.clientReference ?? "", text: Strings.setMomoPrompt(with: self.viewModel.momoNumber ?? ""),provider: self.paymentProvider, delegate: self.delegate, transactionDetails: self.viewModel.momoResponse, clientReference: self.viewModel.order?.clientReference, amountPaid: self.viewModel.totalAmount)
+                }
+              
+            } else if CheckOutViewModel.checkoutType == .preapprovalconfirm{
+                if (self.viewModel.preApprovalResponse?.verificationType == "OTP" && self.viewModel.preApprovalResponse?.skipOtp == false){
+                    let controller = OtpScreenViewController(mobileNumber: self.viewModel.momoNumber ?? "", preapprovalResponse: self.viewModel.preApprovalResponse, amount: viewModel.totalAmount)
+                    self.navigationController?.pushViewController(controller, animated: true)
+                }else{
+                    let controller = PreApprovalSuccessVcViewController(walletName: "mobile money wallet", amount: self.viewModel.totalAmount)
+                    self.navigationController?.pushViewController(controller, animated: true)
+                }
+                
+               
+                return
+            }else if CheckOutViewModel.checkoutType == .directdebit{
+                
+                if (self.viewModel.momoResponse?.verificationType == "OTP" && self.viewModel.momoResponse?.skipOtp == false){
+                    let approvalStatus = PreApprovalResponse(preapprovalStatus: "", verificationType: self.viewModel.momoResponse?.verificationType, clientReference: self.viewModel.momoResponse?.clientReference, hubtelPreapprovalId: self.viewModel.momoResponse?.hubtelPreapprovalId, otpPrefix: self.viewModel.momoResponse?.otpPrefix, customerMsisdn: self.viewModel.momoResponse?.customerMsisdn, skipOtp: viewModel.momoResponse?.skipOtp)
+                    
+                    let controller = OtpScreenViewController(mobileNumber: viewModel.momoNumber ?? "", preapprovalResponse: approvalStatus, checkoutType: .directdebit, clientReference: self.viewModel.momoResponse?.clientReference ?? self.order?.clientReference)
+                    self.navigationController?.pushViewController(controller, animated: true)
+                    
+                    return
+                    
+                }
+               
+            }
+            
+            
+            CheckTransactionStatusViewController.openTransactionHistory(navController: self.navigationController, transactionId: self.viewModel.momoResponse?.clientReference ?? "", text: Strings.directDebitText,provider: self.paymentProvider, delegate: self.delegate, transactionDetails: self.viewModel.momoResponse, clientReference: self.viewModel.order?.clientReference, amountPaid: self.viewModel.totalAmount)
+
         }
     }
     
@@ -308,9 +457,40 @@ extension CheckoutViewController: ViewStatesDelegate{
                 Section(title: "", imageName: "", cellStyle: .momoInputs),
                 Section(title: Strings.bankCard, imageName: "", cellStyle: .paymentChoiceHeader, hideDivider: true),
                 Section(title: Strings.emptyString, imageName: "", cellStyle: .bankCardInputs),
+//                Section(title: Strings.others, imageName: "", cellStyle: .paymentChoiceHeader, hideDivider: true),
+//                Section(title: Strings.emptyString, imageName: Strings.emptyString, cellStyle: .otherPaymentMethods),
                 Section(title: Strings.emptyString, imageName: "", cellStyle: .bottomCell)
             ]
         }
+        
+        if let progress = progress{
+            progress.dismiss(animated: true){
+                handleData()
+                self.tableView.reloadData()
+            }
+        }else{
+            handleData()
+            self.tableView.reloadData()
+        }
+        
+    }
+  
+    
+    func handleWalletsForInternalMerchants() {
+        func handleData(){
+            self.data2 = [
+                Section(title: "", imageName: "", cellStyle: .receiptHeader),
+                Section(title: Strings.payWith, imageName: Strings.emptyString, cellStyle: .payWithTitle),
+                Section(title: Strings.mobileMoney, imageName: "", cellStyle: .paymentChoiceHeader),
+                Section(title: "", imageName: "", cellStyle: .momoInputs),
+                Section(title: Strings.bankCard, imageName: "", cellStyle: .paymentChoiceHeader, hideDivider: false),
+                Section(title: Strings.emptyString, imageName: "", cellStyle: .bankCardInputs),
+                Section(title: Strings.others, imageName: "", cellStyle: .paymentChoiceHeader, hideDivider: true),
+                Section(title: Strings.emptyString, imageName: Strings.emptyString, cellStyle: .otherPaymentMethods),
+                Section(title: Strings.emptyString, imageName: "", cellStyle: .bottomCell)
+            ]
+        }
+        
         if let progress = progress{
             progress.dismiss(animated: true){
                 handleData()
@@ -331,6 +511,28 @@ extension CheckoutViewController: ViewStatesDelegate{
                 Section(title: Strings.mobileMoney, imageName: "", cellStyle: .paymentChoiceHeader, hideDivider: true),
                 Section(title: "", imageName: "", cellStyle: .momoInputs),
                 Section(title: Strings.emptyString, imageName: "", cellStyle: .bottomCell)
+            ]
+        }
+        if let progress = progress{
+            progress.dismiss(animated: true){
+               handleData()
+                self.tableView.reloadData()
+            }
+        }else{
+            handleData()
+             self.tableView.reloadData()
+        }
+       
+    }
+    
+    func handleOnlyCheckoutHeader() {
+        func handleData(){
+            self.data2 = [
+                Section(title: "", imageName: "", cellStyle: .receiptHeader),
+//                Section(title: Strings.payWith, imageName: Strings.emptyString, cellStyle: .payWithTitle),
+//                Section(title: Strings.mobileMoney, imageName: "", cellStyle: .paymentChoiceHeader, hideDivider: true),
+//                Section(title: "", imageName: "", cellStyle: .momoInputs),
+//                Section(title: Strings.emptyString, imageName: "", cellStyle: .bottomCell)
             ]
         }
         if let progress = progress{
@@ -368,6 +570,31 @@ extension CheckoutViewController: ViewStatesDelegate{
        
     }
     
+    func handleVerificationStatus(value: VerificationResponse?) {
+        let textField = view.viewWithTag(Tags.mobileMoneyTextFieldTag)
+        self.progress?.dismiss(animated: true){
+            if let value = value, let status = value.status{
+               switch status.lowercased(){
+                    case VerificationStatus.verified.rawValue:
+                         self.makeMomoRequest()
+               case VerificationStatus.unverified.rawValue:
+                   let controller = GovernmentVerificationViewController(verificationDetails: value, customerMsisdn: self.customerMobileNumber ?? (textField as? UITextField)?.text ?? "", provider: self.paymentChannel?.rawValue)
+                   self.present(controller, animated: true)
+                    default:
+                        print("This is the default payment")
+
+                    }
+               
+            }else{
+                let controller = GovernmentIdIntakeViewController()
+                controller.msisdn = self.customerMobileNumber ?? (textField as? UITextField)?.text
+                let navController = UINavigationController(rootViewController: controller)
+                self.present(navController, animated: true)
+            }
+
+        }
+    }
+    
     
 }
 
@@ -393,17 +620,31 @@ extension CheckoutViewController: UITableViewDelegate, UITableViewDataSource{
             case .receiptHeader:
                 let cell = tableView.dequeueReusableCell(withIdentifier: ReceiptTableViewCell.identifier) as! ReceiptTableViewCell
                 cell.setupUI(with: order, totalAmount: self.viewModel.totalAmount)
-                cell.setupFeesUpdate(with: viewModel.fees)
+                cell.setupFeesUpdate(with: viewModel.feesToUpdateFrontend)
+                if showFees{
+                    dump(viewModel.feeAmount)
+                    cell.setupFeesUpdate(with: viewModel.fees)
+                }
+                cell.receiptView.delegate = self
+                cell.setBusinessDetails(imageUrl: businessImage, businessName: businessName)
                 return cell
+                
             case .momoInputs:
                 let cell = tableView.dequeueReusableCell(withIdentifier: ProviderInfoIntakeTableViewCell.identifier, for: indexPath) as! ProviderInfoIntakeTableViewCell
                 cell.delegate = self
                 cell.validateDelegate = self
-                cell.setupProviderString(with: Array(PaymentOptions.options.keys).count > 0 ? Array(PaymentOptions.options.keys)[0] : "")
+                cell.setupProviderString(with: viewModel.providerChannel.getPaymentChannelString())
+                cell.configureWallets(wallets: wallets)
+                cell.walletAdderDelegate = self
                 return cell
             case .bankCardInputs:
                 let cell = tableView.dequeueReusableCell(withIdentifier: BankPaymentFieldsTableViewCell.identifier) as! BankPaymentFieldsTableViewCell
+                cell.setupUI(value: viewModel.isHubtelInternalMerchant)
                 cell.delegate = self
+                cell.configureWallets(wallets: BankDetails.getDetails())
+                cell.isInternalHubtelMerchant = viewModel.isHubtelInternalMerchant
+                cell.menuDelegate = self
+                cell.savedCarddelegate = self
                 return cell
             case .paymentChoiceHeader:
                 let cell = tableView.dequeueReusableCell(withIdentifier: PaymentChoiceTableViewCell.identifier) as! PaymentChoiceTableViewCell
@@ -415,6 +656,14 @@ extension CheckoutViewController: UITableViewDelegate, UITableViewDataSource{
                 }else{
                     cell.revert()
                 }
+                return cell
+            case .otherPaymentMethods:
+                let cell = tableView.dequeueReusableCell(withIdentifier: OtherPaymentMethodsTableViewCell.identifier) as! OtherPaymentMethodsTableViewCell
+                cell.delegate = self
+                cell.otherPaymentChannelChangeDelegate = self
+                cell.enterNewMandateSelectorDelegate = self
+                cell.configureWallets(wallets: wallets)
+                cell.walletAdderDelegate = self
                 return cell
             case .bottomCell:
                 let cell = tableView.dequeueReusableCell(withIdentifier: BottomCornersTableViewCell.identifier) as! BottomCornersTableViewCell
@@ -429,6 +678,8 @@ extension CheckoutViewController: UITableViewDelegate, UITableViewDataSource{
             return showMomoField ? tableView.rowHeight : 0
         case 5:
             return showBankField ? tableView.rowHeight : 0
+        case 7:
+            return showOtherFieldsTab ? tableView.rowHeight : 0
         default:
             return tableView.rowHeight
         }
@@ -436,32 +687,59 @@ extension CheckoutViewController: UITableViewDelegate, UITableViewDataSource{
     
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         self.view.endEditing(true)
+        
+        let section = data2[indexPath.row]
+        
         if indexPath.row == 2{
+            
             print(paymentProvider)
             print(PaymentChannel.getChannel(string: paymentProvider))
             shadeCellSelected(tableView: tableView, indexPath: indexPath, isSelected: true)
              shadeCellSelected(tableView: tableView, indexPath: IndexPath(row: 4, section: 0), isSelected: false)
+            shadeCellSelected(tableView: tableView, indexPath: IndexPath(row: 6, section: 0), isSelected: false)
             showBankField = false
             showMomoField = true
+            showOtherFieldsTab = false
+            self.customerMobileNumber = ((self.view.viewWithTag(Tags.momoNumberSelectorTag) as? ProviderSelectorView)?.getProviderString())
             if usesOnlyBankPayment{
                 handleBankPaymentLogic()
             }else{
                  paymentType = .momo
-                 viewModel.getFees(for: PaymentChannel.getChannel(string: paymentProvider).rawValue)
+                
+//                 viewModel.getFees(for: PaymentChannel.getChannel(string: paymentProvider).rawValue)
+                
+                viewModel.makeGetFeesNewEndPoint(channel: PaymentChannel.getChannel(string: paymentProvider).rawValue, amount: viewModel.order?.amount ?? 0.00)
+                
                  let momoTextField = view.viewWithTag(Tags.mobileMoneyTextFieldTag) as? UITextField
                  UIView.animate(withDuration: 0.5) {
-                     momoTextField?.becomeFirstResponder()
+                     if self.wallets == nil{
+                         momoTextField?.becomeFirstResponder()
+                     }
                  }
             }
            
             
             
-        }else if indexPath.row == 4{
+        }else if indexPath.row == 4 {
             shadeCellSelected(tableView: tableView, indexPath: indexPath, isSelected: true)
              shadeCellSelected(tableView: tableView, indexPath: IndexPath(row: 2, section: 0), isSelected: false)
+            shadeCellSelected(tableView: tableView, indexPath: IndexPath(row: 6, section: 0), isSelected: false)
             showBankField = true
             showMomoField = false
+            showOtherFieldsTab = false
             handleBankPaymentLogic()
+        }else if indexPath.row == 6 && section.cellStyle != .bottomCell {
+            showBankField = false
+            showMomoField = false
+            showOtherFieldsTab = true
+            shadeCellSelected(tableView: tableView, indexPath: indexPath, isSelected: true)
+             shadeCellSelected(tableView: tableView, indexPath: IndexPath(row: 4, section: 0), isSelected: false)
+            shadeCellSelected(tableView: tableView, indexPath: IndexPath(row: 2, section: 0), isSelected: false)
+            paymentType = (self.view.viewWithTag(Tags.providerWalletTagSelector) as? ProviderSelectorView)?.getPaymentType()
+            
+            customerMobileNumber = (self.view.viewWithTag(Tags.contactSelectorTag) as? ProviderSelectorView)?.getProviderString() ?? initCustomerMobilerNumber
+            
+            viewModel.makeGetFeesNewEndPoint(channel: "hubtel-gh", amount: viewModel.order?.amount ?? 0.00)
         }
         
         tableView.performBatchUpdates(nil)
@@ -470,12 +748,25 @@ extension CheckoutViewController: UITableViewDelegate, UITableViewDataSource{
     func handleBankPaymentLogic(){
         paymentType = .bank
         paymentChannel = .visa
-        viewModel.getFees(for: PaymentChannel.visa.rawValue)
+        
+//        viewModel.getFees(for: PaymentChannel.visa.rawValue)
+        
+        viewModel.makeGetFeesNewEndPoint(channel: PaymentChannel.getChannel(string: paymentProvider).rawValue, amount: viewModel.order?.amount ?? 0.00)
+        
+        
         if !BankPaymentFieldsTableViewCell.useSavedCardForPayment{
             let bankNameField = self.view.viewWithTag(Tags.accountNameTextFieldTag) as? UITextField
+            let accountNumberTextFieldTag =  self.view.viewWithTag(Tags.accountNumberTextFieldTag) as? UITextField
             UIView.animate(withDuration: 0.5) {
-                bankNameField?.becomeFirstResponder()
+                if self.viewModel.isHubtelInternalMerchant{
+                    accountNumberTextFieldTag?.becomeFirstResponder()
+                }else{
+                    bankNameField?.becomeFirstResponder()
+                }
+                
+               
             }
+            self.bottomButton.validate(false)
         }else{
             self.bottomButton.validate(true)
         }
@@ -547,7 +838,79 @@ extension CheckoutViewController {
 }
 
 
+
+extension CheckoutViewController: OtherChannelSelectorProtocol, MandateIdSelectorDelegate{
+    func enterNewMandateId(value: Bool) {
+        self.enterNewMandateId = value
+    }
+    
+    
+    func handleOtherPaymentChannelSelected(value: String){
+        if value.lowercased() == "hubtel"{
+            self.paymentType = .hubtel
+            viewModel.makeGetFeesNewEndPoint(channel: "hubtel-gh", amount: viewModel.order?.amount ?? 0.00)
+            return
+        }
+        
+        if value.lowercased() == "zeepay"{
+            self.paymentType = .zeepay
+            viewModel.makeGetFeesNewEndPoint(channel: "zeepay", amount: viewModel.order?.amount ?? 0.00)
+            return
+        }
+        
+        if value.lowercased() == "g-money"{
+            self.paymentType = .gmoney
+            viewModel.makeGetFeesNewEndPoint(channel: "g-money", amount: viewModel.order?.amount ?? 0.00)
+            return
+        }
+    }
+    
+    func selectChannel(channel: String) {
+        handleOtherPaymentChannelSelected(value: channel)
+        customerMobileNumber = (self.view.viewWithTag(Tags.contactSelectorTag) as? ProviderSelectorView)?.getProviderString()
+        initCustomerMobilerNumber = (self.view.viewWithTag(Tags.contactSelectorTag) as? ProviderSelectorView)?.getProviderString()
+    }
+    
+    
+}
+
 extension CheckoutViewController: ButtonActionDelegate{
+    
+    func payWithHubtelWallet(){
+        
+        let hubtelWallet = wallets?.first(where: {
+            $0.provider?.lowercased() == "hubtel"
+        })
+        
+    
+        let formattedAmount = String(format: "%.2f", order?.amount ?? 0.00)
+        
+        let request = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: hubtelWallet?.accountNo, channel: "hubtel-gh", amount: formattedAmount, primaryCallbackUrl: callbackUrl, description: order?.purchaseDescription, clientReference: order?.clientReference, mandateId: nil)
+        viewModel.paywithMomo(request: request)
+    }
+    
+    func payWithZeePay(){
+        payWithMomo()
+    }
+    
+    func payWithGmoney(){
+        
+        let formattedAmount = String(format: "%.2f", order?.amount ?? 0.00)
+        
+        let mandateId = MandateIdManager.shared.getMandateIdFromCache()
+        
+        let request = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: customerMobileNumber, channel: "g-money", amount: formattedAmount, primaryCallbackUrl: callbackUrl, description: order?.purchaseDescription, clientReference: order?.clientReference, mandateId: mandateId)
+      
+        if enterNewMandateId || mandateId == nil{
+            let controller = MandateIdIntakeViewController(mobileMoneyRequest: request, delegate: delegate)
+            self.navigationController?.pushViewController(controller, animated: true)
+        }else{
+            viewModel.paywithMomo(request: request)
+        }
+        
+        
+    }
+    
     func performAction() {
         AnalyticsHelper.recordCheckoutEvent(event: .checkoutPayTapButtonPay)
         UserSetupRequirements.shared.resetStates()
@@ -556,16 +919,51 @@ extension CheckoutViewController: ButtonActionDelegate{
             payWithBank()
         case .momo:
             payWithMomo()
+        case .zeepay:
+            payWithZeePay()
+        case .hubtel:
+            payWithHubtelWallet()
+        case .gmoney:
+            payWithGmoney()
         default:
             print("no payment here")
         }
 
         
-        
+//        self.present(controller, animated: true)
+////
+////        let controller = FinalSuccessVerificationViewController()
+//        self.navigationController?.pushViewController(controller, animated: true)
+       
+//        let controller = GovernmentIdIntakeViewController()
+//        self.present(controller, animated: true)
     }
 }
 
 extension CheckoutViewController: ShowMenuItemsDelegate{
+    func showMenuForWallet() {
+        
+        tableView.performBatchUpdates(nil)
+        self.tableView.scrollToRow(at: IndexPath(row: 4, section: 0), at: .middle, animated: true)
+        
+//        self.view.layoutIfNeeded()
+    }
+    
+    func updatePaymentDetails(contact: String, provider: String) {
+        print(provider)
+        if contact.isEmpty{
+            self.paymentProvider = PaymentChannel.getChannel(string: provider).rawValue
+            viewModel.makeGetFeesNewEndPoint(channel: PaymentChannel.getChannel(string: provider).rawValue, amount: viewModel.order?.amount ?? 0.00)
+            return
+        }
+        self.customerMobileNumber = contact
+        self.paymentProvider = PaymentChannel.getChannel(string: provider).rawValue
+        
+        viewModel.makeGetFeesNewEndPoint(channel: PaymentChannel.getChannel(string: provider).rawValue, amount: viewModel.order?.amount ?? 0.00)
+    }
+    
+    
+    
     func showPopOver() {
       let vc = UIViewController()
         vc.preferredContentSize = CGSize(width: alertWidth, height: alertHeight)
@@ -587,10 +985,22 @@ extension CheckoutViewController: ShowMenuItemsDelegate{
         
           
             let myView = self.view.viewWithTag(Tags.mobileMoneySectionCellTag) as? ProviderInfoIntakeTableViewCell
+            
             myView?.setupProviderString(with:Array(PaymentOptions.options.keys)[selectedValue])
+            
+            print(PaymentOptions.options.keys)
+            
+            print(Array(PaymentOptions.options.keys)[selectedValue])
+            
             self.paymentProvider = PaymentOptions.options[Array(PaymentOptions.options.keys)[selectedValue]] ?? ""
+            
+            print("\n\n\(PaymentChannel(rawValue: self.paymentProvider))")
+            
             self.paymentChannel = PaymentChannel(rawValue: self.paymentProvider)
-            self.viewModel.getFees(for: PaymentChannel.getChannel(string: self.paymentProvider).rawValue)
+
+            self.viewModel.makeGetFeesNewEndPoint(channel: PaymentChannel.getChannel(string: self.paymentProvider).rawValue, amount: self.order?.amount ?? 0.00)
+            print(self.paymentChannel)
+            print(self.paymentProvider)
         }))
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { action in
@@ -610,46 +1020,115 @@ extension CheckoutViewController{
     
     func payWithBank() {
         let cardNumberFieldText = (view.viewWithTag(Tags.accountNumberTextFieldTag) as? CustomTextField)?.getInputTextWithoutSpace()
+        
         let expiryDetails = (view.viewWithTag(Tags.expiryDateTextFieldTag) as? CustomTextField)?.getInputText().getExpiryInfo()
+        
         let cvv = (view.viewWithTag(Tags.cvvTextFieldTag) as? CustomTextField)?.getInputText()
+        
         let cardHolderName =  (view.viewWithTag(Tags.accountNameTextFieldTag) as? CustomTextField)?.getInputText()
+        
         let switcherValue = (view.viewWithTag(Tags.switcherTag) as? UISwitch)?.isOn
-                let uuid = UUID()
         
-        
-                let cardDetails = BankDetails(cardHolderName: cardHolderName ?? "", cardHolderNumber: cardNumberFieldText ?? "", cvv: cvv ?? "", expiryMonth: expiryDetails?.month ?? "", expiryYear: expiryDetails?.year ?? "")
+        let cardDetails = BankDetails(cardHolderName: cardHolderName ?? "", cardHolderNumber: cardNumberFieldText ?? "", cvv: cvv ?? "", expiryMonth: expiryDetails?.month ?? "", expiryYear: expiryDetails?.year ?? "")
         
                 if switcherValue ?? false{
-                    cardDetails.save()
-        //            cardDetails.saveToDb()
+//                    cardDetails.save()
+                    cardDetails.saveToDb()
                 }
-        let requestBody = viewModel.generateSetupRequest(with: cardDetails, useSavedCard: BankPaymentFieldsTableViewCell.useSavedCardForPayment)
         
+        let requestBody : SetupPayerAuthRequest?
+        
+        print(BankPaymentFieldsTableViewCell.useSavedCardForPayment)
+        
+        if BankPaymentFieldsTableViewCell.useSavedCardForPayment{
+            requestBody = viewModel.generateSetupRequest(with: viewModel.bankCardForPayment, useSavedCard: BankPaymentFieldsTableViewCell.useSavedCardForPayment)
+        }else{
+            requestBody = viewModel.generateSetupRequest(with: cardDetails)
+        }
+        
+        dump(requestBody)
+       
         viewModel.payWithBank(with: requestBody)
-//        let controller = UINavigationController(rootViewController:CardVerificationViewController())
-//        controller.modalTransitionStyle = .crossDissolve
-//        controller.presentationController?.delegate = ModalPresentationDelegate.shared
-//        self.present(controller, animated: true)
-//        dump(viewModel.cardWhitelistCheckResponseObj?.fraudLabsStatus)
-//        viewModel.handleBankPaymentWhitelist()
+
         
   }
                 
     
     
     
+    func makeMomoRequest(checkoutChannel: String? = nil){
+
+        let channel = paymentProvider
+        
+        let textField = view.viewWithTag(Tags.mobileMoneyTextFieldTag)
+        
+        let formattedAmount = String(format: "%.2f", order?.amount ?? 0.00)
+        
+        let momoRequest = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, channel:checkoutChannel ?? channel, amount: formattedAmount, primaryCallbackUrl: callbackUrl, description: order?.purchaseDescription ?? "", clientReference: order?.clientReference, mandateId: nil)
+        
+        switch CheckOutViewModel.checkoutType{
+        case .preapprovalconfirm:
+            viewModel.makePreapprovalConfirm(channel: "\(channel)-direct-debit", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text ?? "", clientReference: order?.clientReference ?? "")
+        case .receivemoneyprompt:
+            let momoRequest = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, channel: channel, amount: formattedAmount, primaryCallbackUrl: callbackUrl, description: order?.purchaseDescription, clientReference: order?.clientReference, mandateId: nil)
+            viewModel.paywithMomo(request: momoRequest)
+        case .directdebit:
+            let directDebitRequest  = MakeDirectDebitCallBody(channel: "\(channel)-direct-debit", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, primaryCallbackUrl: callbackUrl, clientReference: order?.clientReference, amount:formattedAmount, description: order?.purchaseDescription)
+            viewModel.makeDirectDebit(request: directDebitRequest)
+        
+        }
+    }
     
     func payWithMomo() {
-        let amount = self.viewModel.totalAmount
+        print(paymentProvider)
+        let amount = self.viewModel.totalAmount.roundValue(toPlaces: 2)
         let channel = paymentProvider
         let textField = view.viewWithTag(Tags.mobileMoneyTextFieldTag)
-        let uuid = UUID()
-        print(channel)
-        let momoRequest = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: (textField as? UITextField)?.text, channel: channel, amount: amount, primaryCallbackUrl: callbackUrl, description: description, clientReference: order?.clientReference)
-    
-        viewModel.momoNumber = (textField as? UITextField)?.text
-        viewModel.paywithMomo(request: momoRequest)
         
+        let formattedAmount = String(format: "%.2f", order?.amount ?? 0.00)
+        
+        let mobileNumberText = customerMobileNumber ?? (textField as? UITextField)?.text
+        
+        let momoRequest = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, channel: channel, amount: formattedAmount, primaryCallbackUrl: callbackUrl, description: order?.purchaseDescription, clientReference: order?.clientReference, mandateId: nil)
+//
+//        viewModel.momoNumber = (textField as? UITextField)?.text
+//        viewModel.paywithMomo(request: momoRequest)
+//
+       
+        let directDebitRequest  = MakeDirectDebitCallBody(channel: "\(channel)-direct-debit", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, primaryCallbackUrl: callbackUrl, clientReference: order?.clientReference, amount:formattedAmount, description: order?.purchaseDescription)
+        
+        viewModel.momoNumber = customerMobileNumber ?? (textField as? UITextField)?.text
+        
+        if paymentType == .zeepay{
+            let request = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, channel: "zeepay", amount: formattedAmount, primaryCallbackUrl: callbackUrl, description: order?.purchaseDescription, clientReference: order?.clientReference, mandateId: nil)
+            viewModel.paywithMomo(request: request)
+            return
+        }
+        
+        switch CheckOutViewModel.checkoutType{
+        case .receivemoneyprompt:
+            if viewModel.merchantRequiresKyc{
+                continueToKycFlow(mobileNumber: mobileNumberText ?? "")
+                return
+            }
+            viewModel.paywithMomo(request: momoRequest)
+        case .directdebit:
+            viewModel.makeDirectDebit(request: directDebitRequest)
+        case .preapprovalconfirm:
+            if viewModel.merchantRequiresKyc{
+                continueToKycFlow(mobileNumber: mobileNumberText ?? "")
+                return
+            }
+            viewModel.makePreapprovalConfirm(channel: "\(channel)-direct-debit", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text ?? "", clientReference: order?.clientReference ?? "")
+        default:
+            viewModel.paywithMomo(request: momoRequest)
+        }
+        
+        
+    }
+    
+    func continueToKycFlow(mobileNumber: String){
+        self.viewModel.checkUserVerificationStatus(mobileNumber: mobileNumber)
     }
     
     
@@ -689,3 +1168,41 @@ class CustomPopoverBackgroundView: UIPopoverBackgroundView {
         }
     }
 }
+
+
+extension CheckoutViewController: ReceiptHeaderViewDelegate{
+    func handleWalletsUpdate(value: [Wallet]) {
+        self.progress?.dismiss(animated: true)
+        self.wallets = value
+        let wallet: Wallet? = value.count > 0 ? value[0] : nil
+        
+        self.customerMobileNumber = wallet?.accountNo
+        
+        self.paymentProvider = PaymentChannel.getChannel(string:wallet?.provider ?? "").rawValue
+        
+        self.tableView.reloadData()
+        
+        
+        self.view.layoutIfNeeded()
+//        tableView.performBatchUpdates(nil)
+       
+    }
+}
+
+
+extension CheckoutViewController: SavedCardPaymentDelegate{
+    func payWithSavedCard(card: BankDetails?) {
+        self.viewModel.bankCardForPayment = card
+    }
+    
+    
+}
+
+
+extension CheckoutViewController: AddMobileWallet{
+    func addMobileWallet() {
+        let controller = AddMobileWalletViewController()
+        self.navigationController?.pushViewController(controller, animated: true)
+    }
+}
+

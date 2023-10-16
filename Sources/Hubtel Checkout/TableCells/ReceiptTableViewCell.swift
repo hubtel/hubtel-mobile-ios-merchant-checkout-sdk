@@ -51,6 +51,10 @@ class ReceiptTableViewCell: UITableViewCell {
         return stackView
     }()
     
+    func setupFees(value: String){
+        receiptView.setFees(value: value)
+    }
+    
     func setupUI(with info: PurchaseInfo?, totalAmount: Double){
         receiptView.amountValue.text = "GHS " + String(format: "%.2f", info?.amount.roundValue() ?? 0.00)
 //        receiptView.businessName.text = info?.businessName
@@ -73,9 +77,13 @@ class ReceiptTableViewCell: UITableViewCell {
         self.backgroundColor = .clear
         self.selectionStyle = .none
         self.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 32, leading: 38, bottom: 32, trailing: 38)
-        self.addSubview(parentStack)
+        self.contentView.addSubview(parentStack)
        
         setupConstraints()
+    }
+    
+    func setBusinessDetails(imageUrl: String, businessName: String){
+        receiptView.setBusinessDetails(imageUrl: imageUrl, businessName: businessName)
     }
     
     func setupConstraints(){

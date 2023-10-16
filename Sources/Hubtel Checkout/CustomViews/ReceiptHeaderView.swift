@@ -9,6 +9,10 @@ import UIKit
 
 class ReceiptHeaderView: UIView {
     
+    lazy var buttonTitle =  "View Fees & Taxes"
+    var delegate: ReceiptHeaderViewDelegate?
+    static var openFees = false
+    
     //top information of the receipt
     let businessImage: UIImageView = {
         let view = UIImageView()
@@ -20,7 +24,7 @@ class ReceiptHeaderView: UIView {
         }
         view.layer.cornerRadius = 20
         view.clipsToBounds = true
-       
+        view.tag = 1143
         return view
     }()
     
@@ -39,6 +43,7 @@ class ReceiptHeaderView: UIView {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = FontManager.getAppFont(size: .m4)
         label.textColor = .black
+        label.tag = 1258
         return label
     }()
     
@@ -61,7 +66,7 @@ class ReceiptHeaderView: UIView {
     }()
     
     lazy var businessInfoStack: UIStackView = {
-        let stack = UIStackView(arrangedSubviews: [businessName, recipientNumber])
+        let stack = UIStackView(arrangedSubviews: [businessName])
         stack.axis = .vertical
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -130,7 +135,7 @@ class ReceiptHeaderView: UIView {
         label.textColor = .black
         return label
     }()
-    
+
     let feesValue: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -141,43 +146,72 @@ class ReceiptHeaderView: UIView {
         return label
     }()
     
-    lazy var feesStack: UIStackView = {
-        let stack = UIStackView(arrangedSubviews: [feesLabel, feesValue])
+    lazy var buttonToViewFeesAndTaxes: UIButton = {
+        let button = UIButton()
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.titleLabel?.font = FontManager.getAppFont(size: .m3, weight: .bold)
+        button.setTitle(buttonTitle, for: .normal)
+        button.setTitleColor(Colors.teal2, for: .normal)
+        button.addTarget(self, action: #selector(buttonAction(_:)), for: .primaryActionTriggered)
+        return button
+        
+    }()
+    
+    lazy var buttontack: UIStackView = {
+        let stack = UIStackView(arrangedSubviews: [buttonToViewFeesAndTaxes])
         stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.distribution = .fillEqually
-        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.axis = .vertical
+        stack.isUserInteractionEnabled = true
         return stack
     }()
     
-    let taxLabel: UILabel = {
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "tax"
-        label.font = FontManager.getAppFont(size: .m4)
-        label.textColor = .black
-        return label
-    }()
+    @objc func buttonAction(_ sender: UIButton){
+        ReceiptHeaderView.openFees = !ReceiptHeaderView.openFees
+        delegate?.showHideFees(value:ReceiptHeaderView.openFees)
+    }
     
-    let taxValue: UILabel = {
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "GHS 0.00"
-        label.textAlignment = .right
-        label.font = FontManager.getAppFont(size: .m4)
-        label.textColor = .black
-        return label
-    }()
+    func setBusinessDetails(imageUrl: String, businessName: String){
+        self.businessImage.downloadImage(from: imageUrl)
+        self.businessName.text = businessName
+    }
+//
+//    let taxLabel: UILabel = {
+//        let label = UILabel()
+//        label.translatesAutoresizingMaskIntoConstraints = false
+//        label.text = "tax"
+//        label.font = FontManager.getAppFont(size: .m4)
+//        label.textColor = .black
+//        return label
+//    }()
+//
+//    let taxValue: UILabel = {
+//        let label = UILabel()
+//        label.translatesAutoresizingMaskIntoConstraints = false
+//        label.text = "GHS 0.00"
+//        label.textAlignment = .right
+//        label.font = FontManager.getAppFont(size: .m4)
+//        label.textColor = .black
+//        return label
+//    }()
+//
+//    lazy var taxStack: UIStackView = {
+//        let stack = UIStackView(arrangedSubviews: [taxLabel, taxValue])
+//        stack.translatesAutoresizingMaskIntoConstraints = false
+//        stack.distribution = .fillEqually
+//        stack.axis = .horizontal
+//        return stack
+//    }()
     
-    lazy var taxStack: UIStackView = {
-        let stack = UIStackView(arrangedSubviews: [taxLabel, taxValue])
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.distribution = .fillEqually
-        stack.axis = .horizontal
-        return stack
-    }()
+//    let label : UILabel = {
+//        let view = UILabel()
+//        view.translatesAutoresizingMaskIntoConstraints = false
+//        view.text = "This is my view so dont"
+//        return view
+//    }()
     
     lazy var middleStack: UIStackView = {
-        let stack = UIStackView(arrangedSubviews: [amountStack])
+        let stack = UIStackView(arrangedSubviews: [amountStack,buttontack])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
         stack.isLayoutMarginsRelativeArrangement = true
@@ -218,7 +252,7 @@ class ReceiptHeaderView: UIView {
     }()
     
     lazy var mainStack: UIStackView = {
-        let stack = UIStackView(arrangedSubviews: [ middleStack, bottomStack])
+        let stack = UIStackView(arrangedSubviews: [centerStack, middleStack, bottomStack])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
         stack.alignment = .fill
@@ -227,20 +261,26 @@ class ReceiptHeaderView: UIView {
     }()
     
     func setFees(value: String){
+        print(value)
         feesValue.text = "GHS "  + String(format: "%.2f", Double(value) ?? 0.00)
     }
     
-    func updateTotalValue(value: String){
-       
-        let attributedString = NSMutableAttributedString(string: "GHS ", attributes: [NSAttributedString.Key.font : FontManager.getAppFont(size: .m5), .baselineOffset: 10])
-        
-//        attributedString.append(NSAttributedString(string: String(info?.itemPrice?.roundValue() ?? 0.00, attributes: [NSAttributedString.Key.font : FontManager.getAppFont(size: .m9, weight: .bold)])))
-        attributedString.append(NSAttributedString(string: String(format: "%.2f", Double(value) ?? 0.00), attributes: [NSAttributedString.Key.font : FontManager.getAppFont(size: .m9, weight: .bold)]))
-                                
-        self.totalAmount.attributedText = attributedString
-    }
+//    func updateTotalValue(value: String){
+//       
+//        let attributedString = NSMutableAttributedString(string: "GHS ", attributes: [NSAttributedString.Key.font : FontManager.getAppFont(size: .m5), .baselineOffset: 10])
+//        
+////        attributedString.append(NSAttributedString(string: String(info?.itemPrice?.roundValue() ?? 0.00, attributes: [NSAttributedString.Key.font : FontManager.getAppFont(size: .m9, weight: .bold)])))
+//        attributedString.append(NSAttributedString(string: String(format: "%.2f", Double(value) ?? 0.00), attributes: [NSAttributedString.Key.font : FontManager.getAppFont(size: .m9, weight: .bold)]))
+//                                
+//        self.totalAmount.attributedText = attributedString
+//    }
     
     func setupFees(value: [GetFeesUpdateView]?){
+        if ReceiptHeaderView.openFees{
+            self.buttonToViewFeesAndTaxes.setTitle("Less details", for: .normal)
+        }else{
+            self.buttonToViewFeesAndTaxes.setTitle("View Fees & Taxes", for: .normal)
+        }
         middleStack.arrangedSubviews.forEach { view in
             if !(view === amountStack){
                 view.isHidden = true
@@ -256,8 +296,11 @@ class ReceiptHeaderView: UIView {
                 stack.distribution = .fillEqually
                 stack.axis = .horizontal
                 middleStack.addArrangedSubview(stack)
+//                middleStack.insertSubview(stack, aboveSubview: buttontack)
             })
         }
+        buttontack.isHidden = false
+        middleStack.addArrangedSubview(buttontack)
        
        
 //        UIView.animate(withDuration: 0.2) {
@@ -272,7 +315,9 @@ class ReceiptHeaderView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+//        print(Self.openFees)
         addSubview(mainStack)
+        
         setupConstraints()
         backgroundColor = .white
         
@@ -295,3 +340,6 @@ class ReceiptHeaderView: UIView {
     
 }
 
+protocol ReceiptHeaderViewDelegate{
+    func showHideFees(value:Bool)
+}

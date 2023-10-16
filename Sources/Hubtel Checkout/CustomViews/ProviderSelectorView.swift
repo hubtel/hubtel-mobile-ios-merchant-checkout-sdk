@@ -39,7 +39,7 @@ class ProviderSelectorView: UIView {
         stack.alignment = .center
 //        stack.distribution = .fillProportionally
         stack.isLayoutMarginsRelativeArrangement = true
-        stack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8)
+        stack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
         return stack
     }()
     
@@ -72,5 +72,25 @@ class ProviderSelectorView: UIView {
     
     func setupString(value: String){
         self.providerLabel.text = value
+    }
+    
+    func getProviderString()->String{
+        print(providerLabel.text)
+        return providerLabel.text?.lowercased() ?? ""
+    }
+    
+    func getPaymentType()->PaymentType {
+        if getProviderString() == "hubtel"{
+            return .hubtel
+        }
+        
+        if getProviderString() == "zeepay"{
+            return .zeepay
+        }
+        
+        if getProviderString() == "g-money"{
+            return .gmoney
+        }
+        return .hubtel
     }
 }
