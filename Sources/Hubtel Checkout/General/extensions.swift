@@ -30,7 +30,7 @@ class ProgressViewController: UIViewController {
 
 extension UIViewController{
     
-    func showProgress(isCancellable:Bool = true, cancelCallback:(()->Void)? = nil) -> UIAlertController {
+    func showNetworkProgress(isCancellable:Bool = true, cancelCallback:(()->Void)? = nil) -> UIAlertController {
         let indicatorView = UIActivityIndicatorView(style: .gray)
         indicatorView.startAnimating()
         let customView = UIView(frame: CGRect(x: 0, y: 0, width: 50, height: 50))

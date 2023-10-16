@@ -23,6 +23,8 @@ class OtpScreenViewController: UIViewController {
     
     var clientReference: String?
     
+    var delegate: PaymentFinishedDelegate?
+    
     lazy var viewModel = OtpRequestViewModel(delegate: self)
     
     let hubtelIconImage: UIImageView = {
@@ -215,13 +217,13 @@ extension OtpScreenViewController: ViewStatesDelegate{
                 return
             }
            
-            let controller = PreApprovalSuccessVcViewController(walletName: "mobile wallet", amount: self.amount ?? 0.00)
+            let controller = PreApprovalSuccessVcViewController(walletName: "mobile wallet", amount: self.amount ?? 0.00, delegate: self.delegate)
             self.navigationController?.pushViewController(controller, animated: true)
         }
     }
     
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showProgress(isCancellable: true)
+        self.progress = showNetworkProgress(isCancellable: true)
     }
     
     func showErrorMessagetToUser(message: String) {

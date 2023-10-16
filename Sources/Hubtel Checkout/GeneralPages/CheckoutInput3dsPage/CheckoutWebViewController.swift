@@ -123,7 +123,7 @@ class CheckoutWebViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        progress = self.showProgress(){
+        progress = self.showNetworkProgress(){
             self.dismiss(animated: true)
         }
         AnalyticsHelper.recordCheckoutEvent(event: .checkout3DsBrowserViewPage3DsBrowser)

@@ -351,7 +351,7 @@ extension CheckoutViewController: ViewStatesDelegate{
     
     
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showProgress(isCancellable: true)
+        self.progress = showNetworkProgress(isCancellable: true)
     }
     
     
@@ -398,9 +398,11 @@ extension CheckoutViewController: ViewStatesDelegate{
             } else if CheckOutViewModel.checkoutType == .preapprovalconfirm{
                 if (self.viewModel.preApprovalResponse?.verificationType == "OTP" && self.viewModel.preApprovalResponse?.skipOtp == false){
                     let controller = OtpScreenViewController(mobileNumber: self.viewModel.momoNumber ?? "", preapprovalResponse: self.viewModel.preApprovalResponse, amount: viewModel.totalAmount)
+                    controller.delegate = self.delegate
                     self.navigationController?.pushViewController(controller, animated: true)
                 }else{
-                    let controller = PreApprovalSuccessVcViewController(walletName: "mobile money wallet", amount: self.viewModel.totalAmount)
+                    let controller = PreApprovalSuccessVcViewController(walletName: "mobile money wallet", amount: self.viewModel.totalAmount, delegate: self.delegate
+                    )
                     self.navigationController?.pushViewController(controller, animated: true)
                 }
                 
@@ -412,6 +414,7 @@ extension CheckoutViewController: ViewStatesDelegate{
                     let approvalStatus = PreApprovalResponse(preapprovalStatus: "", verificationType: self.viewModel.momoResponse?.verificationType, clientReference: self.viewModel.momoResponse?.clientReference, hubtelPreapprovalId: self.viewModel.momoResponse?.hubtelPreapprovalId, otpPrefix: self.viewModel.momoResponse?.otpPrefix, customerMsisdn: self.viewModel.momoResponse?.customerMsisdn, skipOtp: viewModel.momoResponse?.skipOtp)
                     
                     let controller = OtpScreenViewController(mobileNumber: viewModel.momoNumber ?? "", preapprovalResponse: approvalStatus, checkoutType: .directdebit, clientReference: self.viewModel.momoResponse?.clientReference ?? self.order?.clientReference)
+                    controller.delegate = self.delegate
                     self.navigationController?.pushViewController(controller, animated: true)
                     
                     return

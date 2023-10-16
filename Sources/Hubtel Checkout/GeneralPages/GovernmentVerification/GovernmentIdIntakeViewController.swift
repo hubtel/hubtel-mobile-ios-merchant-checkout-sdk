@@ -167,7 +167,7 @@ extension GovernmentIdIntakeViewController: ViewStatesDelegate{
     }
     
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showProgress(isCancellable: true)
+        self.progress = showNetworkProgress(isCancellable: true)
     }
     
 

@@ -236,7 +236,7 @@ extension AddMobileWalletViewController: ButtonActionDelegate{
 
 extension AddMobileWalletViewController: ViewStatesDelegate{
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showProgress(isCancellable: true)
+        self.progress = showNetworkProgress(isCancellable: true)
     }
     
     func showErrorMessagetToUser(message: String) {
