@@ -22,6 +22,8 @@ public protocol PaymentFinishedDelegate: AnyObject{
 class CheckoutWebViewController: UIViewController {
     lazy var viewModel = CheckoutWebViewViewModel(delegate: self)
     var progress: UIAlertController?
+    var makeEnrollment2: Bool = true
+    
     static func openWebViewForPayment(parentController: UIViewController, setupResponse: Setup3dsResponse?, with authKey: String, delegate: PaymentFinishedDelegate?, usePresentation: Bool = false){
         let controller = CheckoutWebViewController()
         controller.setup3dsResponse = setupResponse
@@ -178,7 +180,7 @@ extension CheckoutWebViewController: WKScriptMessageHandler, WKNavigationDelegat
         if message.name == "console" && (message.body as? String) == "https://cybersourcecallbacks.hubtel.com"{
 //            showAlert(with: "Success", message: "Your payment is being processed. Click ok to check payment status") { action in
                 self.dismiss(animated: true){
-                    CheckTransactionStatusViewController.openTransactionHistory(navController: self.parentController?.navigationController, transactionId: self.setup3dsResponse?.clientReference ?? "", text: "Checking Payment Status",delegate: self.delegate)
+                    CheckTransactionStatusViewController.openTransactionHistory(navController: self.parentController?.navigationController, transactionId: self.setup3dsResponse?.clientReference ?? "", text: Strings.directDebitText,delegate: self.delegate)
                 }
 //            }
         }
@@ -186,7 +188,11 @@ extension CheckoutWebViewController: WKScriptMessageHandler, WKNavigationDelegat
         
         if message.name == "console"{
             webView.stopLoading()
-            viewModel.makeEnrollment(with: setup3dsResponse?.transactionId ?? "")
+            print("entering here")
+            if makeEnrollment2{
+                viewModel.makeEnrollment(with: setup3dsResponse?.transactionId ?? "")
+            }
+            makeEnrollment2 = false
         }
         
        
@@ -281,9 +287,18 @@ extension CheckoutWebViewController: CheckOutWebViewDelegate{
     func open3dsPage() {
         
         progress?.dismiss(animated: true){
-            self.webView.alpha = 1
-            self.view.alpha = 1
-            self.webView.loadHTMLString(self.continueCheckout(withOrderId: "", andhubtelReference: "", jwt: self.viewModel.enrollmentResponse?.jwt ?? "", customData: self.viewModel.enrollmentResponse?.customData ?? "" ), baseURL: nil)
+            
+            if self.viewModel.enrollmentResponse?.cardStatus == CardStatus.authSuccessFull.rawValue{
+                self.dismiss(animated: true){
+                    CheckTransactionStatusViewController.openTransactionHistory(navController: self.parentController?.navigationController, transactionId: self.setup3dsResponse?.clientReference ?? "", text: "Checking Payment Status",delegate: self.delegate)
+                }
+                
+                
+            }else{
+                self.webView.alpha = 1
+                self.view.alpha = 1
+                self.webView.loadHTMLString(self.continueCheckout(withOrderId: "", andhubtelReference: "", jwt: self.viewModel.enrollmentResponse?.jwt ?? "", customData: self.viewModel.enrollmentResponse?.customData ?? "" ), baseURL: nil)
+            }
         }
     }
     

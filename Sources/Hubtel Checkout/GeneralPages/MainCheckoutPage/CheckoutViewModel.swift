@@ -24,6 +24,13 @@ import UIKit
     @objc optional func handleOnlyBankPayment()
     @objc optional func handleOnlyMobileMoney()
     @objc optional func showErrorToDismiss(message: String, dismiss: Bool)
+    @objc optional func activateFeesButton(value: Bool)
+    @objc optional func handleWalletsUpdate(value: [Wallet])
+    @objc optional func handleBusinessInfoPassed(businessId: String?, businessName: String?, businessImageUrl: String?)
+    @objc optional func handleVerificationStatus(value: VerificationResponse?)
+    @objc optional func handleOnlyCheckoutHeader()
+    @objc optional func handleWalletsForInternalMerchants()
+//    @objc optional func handleDirectDebitAction(transaction: MomoResponse?)
 }
 
 protocol CheckoutRequirements{
@@ -45,20 +52,51 @@ extension CheckoutRequirements{
     }
 }
 
+
+
 class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
+    
     var task: URLSessionDataTask?
+    
     weak var delegate: ViewStatesDelegate?
+    
     var order: PurchaseInfo?
+    
     var paymentType: String?
+    
     lazy var totalAmount: Double = order?.amount ?? 0.00
+    
     var setupResponse: Setup3dsResponse?
+    
     var momoResponse: MomoResponse?
+    
     var momoNumber: String?
+    
     var cardWhitelistCheckResponseObj: CardWhiteListResponse?
+    
     var fees: [GetFeesUpdateView]?
+    
     var imageUpdater = ImageUpdatShowerUpdate()
+    
     var providerChannel: String = ""
+    
+    var feesToUpdateFrontend: [GetFeesUpdateView]?
+    
     static var allowPayment: Bool = false
+    
+    static var checkoutType: CheckoutType = .receivemoneyprompt
+    
+    var preApprovalResponse: PreApprovalResponse?
+    
+    var merchantRequiresKyc: Bool = false
+    
+    var isHubtelInternalMerchant = false
+    
+    var bankCardForPayment: BankDetails?
+    
+    var feeAmount: Double = 0.00
+    
+    static var isHubtelMerchantEnabled: Bool = false
     
     init(delegate: ViewStatesDelegate, imageUpdater: ImageUpdatShowerUpdate = ImageUpdatShowerUpdate()){
         self.delegate = delegate
@@ -92,15 +130,21 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
     func getPaymentChannels(completion: @escaping (Bool, Bool)->Void ){
         let bankAllowed = UserDefaults.standard.object(forKey: PaymentChannelCachedKeys.isBankAllowed) as? Bool
         let momoAllowed = UserDefaults.standard.object(forKey: PaymentChannelCachedKeys.isMomoAllowed) as? Bool
+        let isStoredHubtelInternalMerchant = UserDefaults.standard.object(forKey: PaymentChannelCachedKeys.isHubtelInternalMerchant) as? Bool
         let showErrorMessage = bankAllowed == nil && momoAllowed == nil
-        if let bankAllowed = bankAllowed, let momoAllowed = momoAllowed{
-            if let cachedPaymentChannels = UserDefaults.standard.object(forKey: "paymentChannels") as? [String]{
-               let _ = self.handlePaymentChanelResponse(channels: cachedPaymentChannels)
-            }
-            completion(momoAllowed, bankAllowed)
-        }else{
+//        if let bankAllowed = bankAllowed, let momoAllowed = momoAllowed, let isStoredHubtelInternalMerchant = isStoredHubtelInternalMerchant{
+//
+//            if let cachedPaymentChannels = UserDefaults.standard.object(forKey: "paymentChannels") as? [String]{
+//               let _ = self.handlePaymentChanelResponse(channels: cachedPaymentChannels)
+//            }
+////            self.isHubtelInternalMerchant = isStoredHubtelInternalMerchant
+//
+////            completion(momoAllowed, bankAllowed)
+//            delegate?.showLoadingStateWhileMakingNetworkRequest?(with: true)
+//
+//        }else{
             delegate?.showLoadingStateWhileMakingNetworkRequest?(with: true)
-        }
+//        }
         
         NetworkManager.checkPaymentChannels(salesID: salesID ?? "", authKey: merchantApiKey ?? "") { data, error in
             guard error == nil else{
@@ -115,24 +159,51 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
                 }
                 return
             }
-            let dataResponse = NetworkManager.decode(data: data, decodingType: ApiResponse<[String]?>.self)
+            let dataResponse = NetworkManager.decode(data: data, decodingType: ApiResponse<ChannelFetchResponse?>.self)
             
-            guard let channels = dataResponse?.data else {
+            guard let response = dataResponse?.data else {
                 if showErrorMessage{
                     self.delegate?.showErrorToDismiss?(message: MyError.someThingHappened.message, dismiss: true)
                 }
                 return
             }
             
-           let paymentChannelHandler = self.handlePaymentChanelResponse(channels: channels)
+            guard let channels = response.channels else{
+                self.delegate?.showErrorToDismiss?(message: MyError.someThingHappened.message, dismiss: true)
+                return
+            }
+            
+            let paymentChannelHandler = self.handlePaymentChanelResponse(channels: channels)
+            
+           
 //            UserDefaults.standard.set(paymentChannelHandler.mobileMoneyAllowed, forKey: PaymentChannelCachedKeys.isMomoAllowed)
 //
             
             self.cache(value: paymentChannelHandler.bankAllowed, forKey: PaymentChannelCachedKeys.isBankAllowed)
             self.cache(value: paymentChannelHandler.mobileMoneyAllowed, forKey: PaymentChannelCachedKeys.isMomoAllowed)
             
+            self.cache(value: response.isHubtelInternalMerchant ?? false, forKey: PaymentChannelCachedKeys.isHubtelInternalMerchant)
             
-            completion(paymentChannelHandler.mobileMoneyAllowed, paymentChannelHandler.bankAllowed)
+            self.delegate?.handleBusinessInfoPassed?(businessId: response.businessId, businessName: response.businessName, businessImageUrl: response.businessLogoUrl)
+            
+            self.merchantRequiresKyc = response.merchantRequiresKyc
+            
+            
+            if response.isHubtelInternalMerchant ?? false{
+               self.isHubtelInternalMerchant = true
+                Self.isHubtelMerchantEnabled = true
+                
+                self.delegate?.dismissLoaderToPerformAnotherAction?()
+                
+                self.makeGetWallets(customerMsisdn: UserSetupRequirements.shared.customerPhoneNumber )
+                completion(paymentChannelHandler.mobileMoneyAllowed, paymentChannelHandler.bankAllowed)
+                
+                
+            }else{
+                
+                completion(paymentChannelHandler.mobileMoneyAllowed, paymentChannelHandler.bankAllowed)
+            }
+            
         }
     }
     
@@ -147,26 +218,40 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
             showMtn: channels.contains(where: {$0.hasPrefix("mtn")}),
             showAirtel: channels.contains(where: {$0.hasPrefix("tigo")}),
             showVoda: channels.contains(where: {$0.hasPrefix("vodafone")}),
-            showVisa: channels.contains(where: {$0.hasPrefix("cardnotpresent-visa")}),
-            showMasterCard: channels.contains(where: {$0.hasPrefix("cardnotpresent-mastercard")})
+            showVisa: channels.contains(where: {$0.contains("visa")}),
+            showMasterCard: channels.contains(where: {$0.contains("mastercard")})
         )
-        PaymentOptions.options = PaymentOptions.convertArrayToDict(value:channels)
+        
+//        PaymentOptions.options = PaymentOptions.convertArrayToDict(value:channels)
         self.providerChannel = PaymentChannel.getChannel(string:Array(PaymentOptions.options.keys).count > 0 ? Array(PaymentOptions.options.keys)[0] : "").rawValue
         
-        UserDefaults.standard.set(PaymentOptions.convertArrayToDict(value:channels), forKey: "paymentChannels")
+//        UserDefaults.standard.set(PaymentOptions.convertArrayToDict(value:channels), forKey: "paymentChannels")
+        
+        
         return (mobileMoneyAllowed: channels.contains(where: {$0.hasPrefix("mtn") || $0.hasPrefix("vodafone") || $0.hasPrefix("tigo")}), bankAllowed: channels.contains(where: {$0.hasPrefix("cardnotpresent-visa") || $0.hasPrefix("cardnotpresent-mastercard") || $0.contains("cardpresent-mastercard") || $0.hasPrefix("cardpresent-visa")}))
     }
     
     func paymentChannelsAllowed(){
+        
+        if isHubtelInternalMerchant{
+            
+        }
+        
         getPaymentChannels { mobileMoneyAllowed, bankPaymentAllowed in
             switch (mobileMoneyAllowed, bankPaymentAllowed){
             case (true, true):
-                self.delegate?.handleBothBankAndMobileMoney?()
+                
+                if self.isHubtelInternalMerchant{
+                    self.delegate?.handleWalletsForInternalMerchants?()
+                }else{
+                    self.delegate?.handleBothBankAndMobileMoney?()
+                }
             case (true, false):
                 self.delegate?.handleOnlyMobileMoney?()
             case (false, true):
                 self.delegate?.handleOnlyBankPayment?()
             default:
+                self.delegate?.handleOnlyCheckoutHeader?()
                 break
             }
         }
@@ -174,7 +259,7 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
     
     
     func handleApiResponseForFees(value: ApiResponse<[GetFeesResponse]?>?){
-
+        dump(value)
         guard let responseObject = value else{
             self.delegate?.showLoaderOnBottomButtonIfNeeded?(with: false)
             return
@@ -227,6 +312,7 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
             return
         }
         
+        dump(data, name: "Data is showing here")
         guard let responseObject  = data.data else {
             self.delegate?.showErrorMessagetToUser?(message: data.message ?? "")
             return
@@ -237,18 +323,22 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
     
     
     
-    func generateSetupRequest(with details: BankDetails, useSavedCard: Bool = false)->SetupPayerAuthRequest?{
+    func generateSetupRequest(with details: BankDetails?, useSavedCard: Bool = false)->SetupPayerAuthRequest?{
+        
         let uuid  = UUID()
+        
         let uuidString = uuid.uuidString
-        if useSavedCard{
-            if let myBankDetails = UserDefaults.standard.object(forKey: Strings.myCard) as? Data{
-                 let myUnarchivedData = try? NSKeyedUnarchiver.unarchivedObject(ofClass: BankDetails.self, from: myBankDetails)
-                return SetupPayerAuthRequest(amount: self.totalAmount , cardHolderName: myUnarchivedData?.cardHolderName ?? "", cardNumber: myUnarchivedData?.cardHolderNumber ?? "", cvv: myUnarchivedData?.cvv ?? "", expiryMonth: myUnarchivedData?.expiryMonth ?? "", expiryYear: myUnarchivedData?.expiryYear ?? "", customerMsisdn: order?.customerMsisDn ?? "", description: order?.purchaseDescription ?? "", clientReference:order?.clientReference ?? uuidString, callbackUrl: callbackUrl ?? "")
-            }else{
-                return nil
-            }
-        }
+        
+        if let details = details{
+            
         return SetupPayerAuthRequest(amount: totalAmount, cardHolderName: details.cardHolderName, cardNumber: details.cardHolderNumber, cvv: details.cvv, expiryMonth: details.expiryMonth, expiryYear: details.expiryYear, customerMsisdn: order?.customerMsisDn ?? "", description: order?.purchaseDescription ?? "", clientReference: order?.clientReference ?? uuidString, callbackUrl: callbackUrl ?? "")
+            
+        }else{
+            
+            return nil
+            
+        }
+        
     }
     
     
@@ -348,12 +438,239 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
                 }
                 return
             }
-            
+           
             let decodedData = NetworkManager.decode(data: data, decodingType: ApiResponse<MomoResponse?>.self)
+           
             DispatchQueue.main.async {
                 self.handleApiResponseForMobileMoneyPayment(value: decodedData)
             }
             
         }
     }
+    
+    func makeDirectDebit(request: MakeDirectDebitCallBody){
+        
+        print(request)
+        
+        dump(request)
+        delegate?.showLoadingStateWhileMakingNetworkRequest?(with: true)
+        NetworkManager.makeDirectDebitCall(merchantId: salesID ?? "", authKey: merchantApiKey ?? "", body: request) { data, error in
+            
+            guard error == nil else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+            
+            guard let data = data  else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+            
+            let decodedData = NetworkManager.decode(data: data, decodingType: ApiResponse<MomoResponse?>.self)
+            
+            self.handleApiResponseForMobileMoneyPayment(value: decodedData)
+        }
+    }
+    
+    func handleApiResponseForPreApprovalConfirm(value: ApiResponse<PreApprovalResponse?>?){
+        guard let data = value else {
+            self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+            return
+        }
+        
+        dump(data, name: "Data is showing here")
+        guard let responseObject  = data.data else {
+            self.delegate?.showErrorMessagetToUser?(message: data.message ?? "")
+            return
+        }
+        self.preApprovalResponse = responseObject
+        self.delegate?.dismissLoaderToPerformMomoPayment?()
+    }
+    
+    func handleApiResponseForWallets(value: ApiResponse<[Wallet]?>?){
+        guard let data = value else {
+            self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+            return
+        }
+        
+        dump(data, name: "Data is showing here")
+        guard let responseObject  = data.data else {
+            self.delegate?.showErrorMessagetToUser?(message: data.message ?? "")
+            return
+        }
+//        self.delegate?.dismissLoaderToPerformMomoPayment?()
+//        self.delegate?.dismissLoaderToPerformAnotherAction?()
+        delegate?.handleWalletsUpdate?(value: responseObject)
+    }
+    
+    
+    
+    func handleNewGetFees(value: ApiResponse<NewGetFeesResponse?>?){
+        
+        guard let data = value else {
+            self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+            self.delegate?.showLoaderOnBottomButtonIfNeeded?(with: false)
+            return
+        }
+        
+        dump(data, name: "Data is showing here")
+        guard let responseObject  = data.data else {
+            self.delegate?.showErrorMessagetToUser?(message: data.message ?? "")
+            self.delegate?.showLoaderOnBottomButtonIfNeeded?(with: false)
+            return
+        }
+        
+        
+        Self.checkoutType = responseObject.getCheckoutType
+        
+        let getfeesResponse = GetFeesUpdateView(name: "Fees", amount: responseObject.fees)
+        
+        self.totalAmount = responseObject.amountPayable
+        
+        self.feeAmount = responseObject.fees
+        
+        delegate?.updateFeesValue?(value: [getfeesResponse])
+        
+        self.delegate?.showLoaderOnBottomButtonIfNeeded?(with: false)
+    }
+    
+    
+    func makeGetFeesNewEndPoint(channel: String, amount: Double){
+        task?.cancel()
+        delegate?.showLoaderOnBottomButtonIfNeeded?(with: true)
+        NetworkManager.getFeesNew(salesId: salesID ?? "", authKey: merchantApiKey ?? "", amount: amount, channel: channel) { data, error in
+            
+            guard error == nil else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+            
+            guard let data = data  else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                    self.delegate?.showLoaderOnBottomButtonIfNeeded?(with: false)
+                }
+                return
+            }
+            
+            let decodedData = NetworkManager.decode(data: data, decodingType: ApiResponse<NewGetFeesResponse?>.self)
+            
+            self.handleNewGetFees(value: decodedData)
+            
+            
+            
+            
+        }
+    }
+    
+    
+    
+    func makePreapprovalConfirm(channel: String, customerMsisdn: String, clientReference: String){
+        delegate?.showLoadingStateWhileMakingNetworkRequest?(with: true)
+        NetworkManager.preApprovalConfirm(merchantId: salesID ?? "", authKey: merchantApiKey ?? "", amount: totalAmount, clientReference: clientReference, customerMsisdn: customerMsisdn, channel: channel, callbackUrl: UserSetupRequirements.shared.callBackUrl) { data, error in
+            
+            
+            guard error == nil else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+            
+            guard let data = data  else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                    self.delegate?.showLoaderOnBottomButtonIfNeeded?(with: false)
+                }
+                return
+            }
+            
+            let decodedData = NetworkManager.decode(data: data, decodingType: ApiResponse<PreApprovalResponse?>.self)
+            
+            self.handleApiResponseForPreApprovalConfirm(value: decodedData)
+            
+        }
+    }
+    
+    func makeGetWallets( customerMsisdn: String){
+//        delegate?.showLoadingStateWhileMakingNetworkRequest?(with: true)
+        NetworkManager.getWallets(salesId: salesID ?? "", authKey: merchantApiKey ?? "", mobileNumber: customerMsisdn ) { data, error in
+            print(error)
+            
+            guard error == nil else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+            
+            guard let data = data  else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                    self.delegate?.showLoaderOnBottomButtonIfNeeded?(with: false)
+                }
+                return
+            }
+            
+            let decodedData = NetworkManager.decode(data: data, decodingType: ApiResponse<[Wallet]?>.self)
+            
+            self.handleApiResponseForWallets(value: decodedData)
+            
+        }
+    }
+    
+    
+    func checkUserVerificationStatus(mobileNumber: String){
+        delegate?.showLoadingStateWhileMakingNetworkRequest?(with: true)
+        NetworkManager.getVerificationDetails(salesId: salesID ?? "", authKey: merchantApiKey ?? "", mobileNumber: mobileNumber){ data, error in
+            print(error)
+            
+            guard error == nil else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+            
+            guard let data = data  else {
+                DispatchQueue.main.async {
+                    self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+                    self.delegate?.showLoaderOnBottomButtonIfNeeded?(with: false)
+                }
+                return
+            }
+            
+            let decodedData = NetworkManager.decode(data: data, decodingType: ApiResponse<VerificationResponse?>.self)
+            
+            self.handleVerificationResponse(value: decodedData)
+            
+        }
+    }
+    
+    func handleVerificationResponse(value: ApiResponse<VerificationResponse?>?){
+        guard let data = value else {
+            self.delegate?.showErrorMessagetToUser?(message: MyError.someThingHappened.message)
+            return
+        }
+        
+        dump(data, name: "Data is showing here")
+        guard let responseObject  = data.data else {
+//            self.delegate?.showErrorMessagetToUser?(message: data.message ?? "")
+            self.delegate?.handleVerificationStatus?(value: nil)
+            return
+        }
+        
+        self.delegate?.handleVerificationStatus?(value: responseObject)
+    }
+    
+    
+    
+    
+    
 }

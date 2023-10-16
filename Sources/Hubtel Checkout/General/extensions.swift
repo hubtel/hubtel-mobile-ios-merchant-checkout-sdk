@@ -222,6 +222,7 @@ extension UIButton {
 
 
 extension UIImageView{
+    
     func setImage(with imageString: String){
         if #available(iOS 13.0, *) {
             image = UIImage(named: imageString, in: Bundle.module, compatibleWith: nil)?.withRenderingMode(.alwaysOriginal)
@@ -229,6 +230,8 @@ extension UIImageView{
          image = UIImage(named: imageString)
         }
     }
+    
+    
 }
 
 extension AnalyticsItem{
@@ -253,4 +256,59 @@ extension AnalyticsItem{
             return self[index]
         }
     }
+
+extension String{
+    func getPaymentChannelString()->String{
+        switch self{
+        case "vodafone-gh":
+            return "Vodafone Ghana"
+        case "mtn-gh":
+            return "MTN Mobile Money"
+        case "tigo-gh":
+            return "Airtel Tigo"
+        default:
+            return ""
+        }
+    }
+}
+
+
+
+extension UIImageView {
+    func downloadImage(from urlString: String, contentMode: UIView.ContentMode = .scaleAspectFit, completion: ((UIImage?) -> Void)? = nil) {
+        // Ensure the URL is valid
+        guard let url = URL(string: urlString) else {
+            print("Invalid URL: \(urlString)")
+            completion?(nil)
+            return
+        }
+
+        // Create a URLSession task to download the image data
+        URLSession.shared.dataTask(with: url) { (data, response, error) in
+            // Check for errors
+            if let error = error {
+                print("Error downloading image: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion?(nil)
+                }
+                return
+            }
+
+            // Ensure we have data and can create an image from it
+            if let data = data, let image = UIImage(data: data) {
+                // Update the image view on the main thread
+                DispatchQueue.main.async {
+                    self.image = image
+                    self.contentMode = contentMode
+                    completion?(image)
+                }
+            } else {
+                print("Invalid data or unable to create image from data.")
+                DispatchQueue.main.async {
+                    completion?(nil)
+                }
+            }
+        }.resume()
+    }
+}
 

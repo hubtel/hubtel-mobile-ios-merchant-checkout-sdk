@@ -23,5 +23,7 @@ public class Colors{
     static let appYellowColor = UIColor(red: 255/255, green: 244/255, blue: 204/255, alpha: 1)
     static let tokensColor = UIColor(red: 204/255, green: 119/255, blue: 0/255, alpha: 1)
     static let black = UIColor(red: 0, green: 0, blue: 0, alpha: 1)
+    static let textGreen = UIColor(red: 53/255, green: 152/255, blue: 70/255, alpha: 1)
+    static let colorPrimaryDeep = UIColor(red: 1.0/255, green: 199/255, blue: 177.0/255,alpha:1)
     static var globalColor: UIColor? = nil
 }

@@ -125,7 +125,7 @@ let jsonFailureJson = """
     
     let mockmomoErrorResponse: ApiResponse<MomoResponse?> = ApiResponse(code: 400, message: "failed to setup", data: nil, errors: [ErrorStruct(field: "nil", errorMessage: "nil")])
     
-    let successMomoMock: ApiResponse<MomoResponse?> = ApiResponse(code: 200, message: "setup complete successfully", data: MomoResponse(transactionId: "00907", charges: 0.1, amount: 1, amountAfterCharges: 1.2, amountCharged: 1.1, deliveryFee: 0.1, description: "implies", clientReference: "111666"), errors: [])
+//    let successMomoMock: ApiResponse<MomoResponse?> = ApiResponse(code: 200, message: "setup complete successfully", data: MomoResponse(transactionId: "00907", charges: 0.1, amount: 1, amountAfterCharges: 1.2, amountCharged: 1.1, deliveryFee: 0.1, description: "implies", clientReference: "111666"), errors: [])
     
     let failureTransactionStatusCheck: ApiResponse<TransactionStatusResponse?> = ApiResponse(code: 400, message: "cannot find transaction status", data: nil, errors: [])
     

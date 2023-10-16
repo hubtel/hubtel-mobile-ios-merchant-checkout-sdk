@@ -50,6 +50,61 @@ class CheckoutTransactionStatusViewModel: CheckoutRequirements{
         }
     }
     
+    func checkTransactionStatus(clientReference: String){
+        NetworkManager.checkStatusOfTransaction(salesID: salesID ?? "", authKey: merchantApiKey ?? "", clientRefrence: clientReference){ data, error in
+            guard error == nil else{
+                DispatchQueue.main.async {
+                    self.delegate.showErrorMessageToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+            guard let data = data else{
+                DispatchQueue.main.async {
+                    self.delegate.showErrorMessageToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+           
+            
+            let decodedData = NetworkManager.decode(data: data, decodingType: ApiResponse<CheckStatusRespsonse?>.self)
+            
+            DispatchQueue.main.async {
+                self.handleNewTransactionSummaryCheckApiResponse(value: decodedData)
+            }
+        }
+    }
+    
+    func handleNewTransactionSummaryCheckApiResponse(value: ApiResponse<CheckStatusRespsonse?>? ){
+        guard value?.errors == nil else{
+            delegate.showErrorMessageToUser?(message: value?.message ?? "")
+            return
+        }
+        
+        guard let data = value else{
+            delegate.showErrorMessageToUser?(message: value?.message ?? "")
+            return
+        }
+        
+        if let status = data.data?.getStatus{
+            switch status{
+            case .unpaid:
+                delegate.transactionPending?()
+            case .failed:
+                delegate.transactionFailed?()
+            case .paid:
+                delegate.transactionSucceeded?()
+            case .expired:
+                delegate.transactionFailed?()
+            case .pending:
+                delegate.transactionPending?()
+            }
+            delegate.changeImageOnScreen?()
+            
+        }else{
+            delegate.validateAndSetTimer?()
+        }
+    }
+    
     func handleTransactionSummaryCheckApiResponse(value: ApiResponse<TransactionStatusResponse?>? ){
         guard value?.errors == nil else{
             delegate.showErrorMessageToUser?(message: value?.message ?? "")
