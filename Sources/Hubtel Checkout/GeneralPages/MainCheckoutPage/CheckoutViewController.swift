@@ -351,7 +351,7 @@ extension CheckoutViewController: ViewStatesDelegate{
     
     
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showProgress(isCancellable: true)
+        self.progress = showNetworkCallProgress(isCancellable: true)
     }
     
     
