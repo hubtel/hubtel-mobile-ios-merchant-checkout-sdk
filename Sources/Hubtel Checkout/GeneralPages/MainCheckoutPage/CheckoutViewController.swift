@@ -39,7 +39,6 @@ public class CheckoutViewController: UIViewController {
     var enterNewMandateId: Bool = false
   
     var initCustomerMobilerNumber: String?
-   
     
     var data2 : [Section] = [
         
@@ -73,11 +72,12 @@ public class CheckoutViewController: UIViewController {
     }
     
     
-    public static func presentCheckoutInternal(from customController: UIViewController, with configuration: HubtelCheckoutConfiguration, and purchaseInfo: PurchaseInfo, delegate: PaymentFinishedDelegate, tintColor: UIColor? = nil, savedBankDetails: BankDetails?){
+    public static func presentCheckoutInternal(from customController: UIViewController, with configuration: HubtelCheckoutConfiguration, and purchaseInfo: PurchaseInfo, delegate: PaymentFinishedDelegate, tintColor: UIColor? = nil, savedBankDetails: BankDetails?) {
         UserSetupRequirements.shared.apiKey = configuration.merchantApiKey
         UserSetupRequirements.shared.callBackUrl = configuration.callbackUrl
         UserSetupRequirements.shared.salesID = configuration.salesID
         UserSetupRequirements.shared.customerPhoneNumber = purchaseInfo.customerMsisDn
+        UserSetupRequirements.isInternalMerchant = true
         let controller = CheckoutViewController()
         controller.order = purchaseInfo
         controller.viewModel.order = purchaseInfo
@@ -398,9 +398,10 @@ extension CheckoutViewController: ViewStatesDelegate{
             } else if CheckOutViewModel.checkoutType == .preapprovalconfirm{
                 if (self.viewModel.preApprovalResponse?.verificationType == "OTP" && self.viewModel.preApprovalResponse?.skipOtp == false){
                     let controller = OtpScreenViewController(mobileNumber: self.viewModel.momoNumber ?? "", preapprovalResponse: self.viewModel.preApprovalResponse, amount: viewModel.totalAmount)
+                    controller.delegate = self.delegate
                     self.navigationController?.pushViewController(controller, animated: true)
                 }else{
-                    let controller = PreApprovalSuccessVcViewController(walletName: "mobile money wallet", amount: self.viewModel.totalAmount)
+                    let controller = PreApprovalSuccessVcViewController(walletName: "mobile money wallet", amount: self.viewModel.totalAmount, delegate: self.delegate)
                     self.navigationController?.pushViewController(controller, animated: true)
                 }
                 
@@ -412,6 +413,7 @@ extension CheckoutViewController: ViewStatesDelegate{
                     let approvalStatus = PreApprovalResponse(preapprovalStatus: "", verificationType: self.viewModel.momoResponse?.verificationType, clientReference: self.viewModel.momoResponse?.clientReference, hubtelPreapprovalId: self.viewModel.momoResponse?.hubtelPreapprovalId, otpPrefix: self.viewModel.momoResponse?.otpPrefix, customerMsisdn: self.viewModel.momoResponse?.customerMsisdn, skipOtp: viewModel.momoResponse?.skipOtp)
                     
                     let controller = OtpScreenViewController(mobileNumber: viewModel.momoNumber ?? "", preapprovalResponse: approvalStatus, checkoutType: .directdebit, clientReference: self.viewModel.momoResponse?.clientReference ?? self.order?.clientReference)
+                    controller.delegate = self.delegate
                     self.navigationController?.pushViewController(controller, animated: true)
                     
                     return

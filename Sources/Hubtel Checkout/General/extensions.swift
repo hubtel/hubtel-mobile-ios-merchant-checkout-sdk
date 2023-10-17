@@ -36,15 +36,17 @@ extension UIViewController{
         let customView = UIView(frame: CGRect(x: 0, y: 0, width: 50, height: 50))
         customView.addSubview(indicatorView)
         indicatorView.center = customView.center
-//        let label = UILabel()
-//        label.text = "Please Wait"
-//        label.font = FontManager.getAppFont(size: .m3, weight: .bold)
-//        label.sizeToFit()
+        let label = UILabel()
+        label.text = "Please Wait"
+        label.font = FontManager.getAppFont(size: .m3, weight: .bold)
+        label.sizeToFit()
         let alert = UIAlertController(title: nil, message: nil, preferredStyle: .alert)
         customView.frame.origin = CGPoint(x: 110, y: 10)
-//        label.frame.origin = CGPoint(x: 270/2 - (label.frame.width / 2), y: 54)
-        alert.view.addSubview(customView)
-//        alert.view.addSubview(label)
+        label.frame.origin = CGPoint(x: 270/2 - (label.frame.width / 2), y: 54)
+        if !UserSetupRequirements.isInternalMerchant {
+            alert.view.addSubview(customView)
+            alert.view.addSubview(label)
+        }
         let progressViewController = ProgressViewController()
         progressViewController.preferredContentSize.height = 100
         alert.setValue(progressViewController, forKey: "contentViewController")

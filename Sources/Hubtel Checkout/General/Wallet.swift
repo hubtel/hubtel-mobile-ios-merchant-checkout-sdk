@@ -7,7 +7,7 @@
 
 import Foundation
 
-@objc class Wallet: NSObject,Codable{
+@objc class Wallet: NSObject, Codable{
     let id: Int?
     let clientId: Int?
     let externalId: String?
