@@ -8,7 +8,7 @@
 import UIKit
 
 class OtpScreenViewController: UIViewController {
-    
+    var delegate: PaymentFinishedDelegate?
     var progress: UIAlertController?
     
     var buttonConstraint: NSLayoutConstraint!
@@ -205,6 +205,8 @@ class OtpScreenViewController: UIViewController {
     
 }
 
+
+
 extension OtpScreenViewController: ViewStatesDelegate{
     
     func dismissLoaderToPerformMomoPayment() {
@@ -215,7 +217,7 @@ extension OtpScreenViewController: ViewStatesDelegate{
                 return
             }
            
-            let controller = PreApprovalSuccessVcViewController(walletName: "mobile wallet", amount: self.amount ?? 0.00)
+            let controller = PreApprovalSuccessVcViewController(walletName: "mobile wallet", amount: self.amount ?? 0.00, delegate: self.delegate)
             self.navigationController?.pushViewController(controller, animated: true)
         }
     }
