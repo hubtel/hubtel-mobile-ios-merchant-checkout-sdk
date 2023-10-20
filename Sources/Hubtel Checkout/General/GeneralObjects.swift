@@ -328,7 +328,9 @@ struct PreApprovalResponse: Codable {
         hubtelPreapprovalId,
         otpPrefix: String?,
         customerMsisdn: String?,
-        skipOtp: Bool?
+        skipOtp: Bool?,
+        clientReferenceId: String?
+    
     
 }
 

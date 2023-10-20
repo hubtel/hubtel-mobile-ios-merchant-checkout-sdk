@@ -74,6 +74,30 @@ class CheckoutTransactionStatusViewModel: CheckoutRequirements{
         }
     }
     
+    func checkTransactionStatusPreApprovalConfirm(clientReference: String){
+        NetworkManager.checkStatusofTransactionPreApproval(salesID: salesID ?? "", authKey: merchantApiKey ?? "", clientRefrence: clientReference){ data, error in
+            guard error == nil else{
+                DispatchQueue.main.async {
+                    self.delegate.showErrorMessageToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+            guard let data = data else{
+                DispatchQueue.main.async {
+                    self.delegate.showErrorMessageToUser?(message: MyError.someThingHappened.message)
+                }
+                return
+            }
+           
+            
+            let decodedData = NetworkManager.decode(data: data, decodingType: ApiResponse<CheckStatusRespsonse?>.self)
+            
+            DispatchQueue.main.async {
+                self.handleNewTransactionSummaryCheckApiResponse(value: decodedData)
+            }
+        }
+    }
+    
     func handleNewTransactionSummaryCheckApiResponse(value: ApiResponse<CheckStatusRespsonse?>? ){
         guard value?.errors == nil else{
             delegate.showErrorMessageToUser?(message: value?.message ?? "")

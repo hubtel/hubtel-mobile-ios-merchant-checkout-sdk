@@ -27,7 +27,7 @@ class CheckTransactionStatusViewController: UIViewController {
     
     lazy var viewModel = CheckoutTransactionStatusViewModel(delegate: self)
     
-    static func openTransactionHistory(navController: UINavigationController?, transactionId: String, text: String, provider: String? = nil, delegate: PaymentFinishedDelegate?, transactionDetails: MomoResponse? = nil, clientReference: String? = nil, amountPaid: Double? = nil){
+    static func openTransactionHistory(navController: UINavigationController?, transactionId: String, text: String, provider: String? = nil, delegate: PaymentFinishedDelegate?, transactionDetails: MomoResponse? = nil, clientReference: String? = nil, amountPaid: Double? = nil, checkoutType: CheckoutType? = nil){
         let controller = CheckTransactionStatusViewController()
         controller.transactionId = transactionId
         controller.setDescriptionLabelText(value: text)
@@ -60,16 +60,16 @@ class CheckTransactionStatusViewController: UIViewController {
         style.headIndent = 1
         style.alignment = .left
         let title = NSMutableAttributedString(string: "Follow the steps below to authorize payment requests ", attributes: [NSAttributedString.Key.paragraphStyle: style])
-
+        
         let title1Str = NSMutableAttributedString(string: "\n 1.  Dial *170# and select Option 6, ", attributes: [NSAttributedString.Key.paragraphStyle: style])
         let mWalletStr = NSMutableAttributedString(string: "My Wallet.", attributes: [NSAttributedString.Key.paragraphStyle: style, NSAttributedString.Key.font: FontManager.getAppFont(size: .m4, weight: .bold)])
         let approvalStr = NSMutableAttributedString(string: "My Approvals.", attributes: [NSAttributedString.Key.paragraphStyle: style, NSAttributedString.Key.font: FontManager.getAppFont(size: .m4, weight: .bold)])
         let title2Str = NSMutableAttributedString(string: "\n 2. Select Option 3 for ", attributes: [NSAttributedString.Key.paragraphStyle: style])
         let title3Str = NSMutableAttributedString(string: "\n 3.  Enter PIN to get your Pending Approval List.", attributes: [NSAttributedString.Key.paragraphStyle: style])
-
-    
+        
+        
         let title4Str = NSMutableAttributedString(string: "\n 4. Select pending transaction to approve.", attributes: [NSAttributedString.Key.paragraphStyle: style ])
-
+        
         let title5Str = NSMutableAttributedString(string: "\n 5. Pay", attributes: [NSAttributedString.Key.paragraphStyle: style])
         title1Str.append(mWalletStr)
         title2Str.append(approvalStr)
@@ -87,7 +87,7 @@ class CheckTransactionStatusViewController: UIViewController {
         stack.axis = .vertical
         stack.alignment = .leading
         stack.translatesAutoresizingMaskIntoConstraints = false
-//        stack.distribution = .fill
+        //        stack.distribution = .fill
         stack.isHidden = !((provider == "mtn-gh") && CheckOutViewModel.checkoutType == .receivemoneyprompt)
         return stack
     }()
@@ -123,7 +123,7 @@ class CheckTransactionStatusViewController: UIViewController {
         label.textAlignment = .center
         return label
     }()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         self.view.addSubview(bottomButton)
@@ -131,16 +131,23 @@ class CheckTransactionStatusViewController: UIViewController {
         self.view.addSubview(descriptionLabel)
         self.view.addSubview(mtnInfoStack)
         setupConstraints()
-//        mtnInfoStack.isHidden = true
+        //        mtnInfoStack.isHidden = true
         UserSetupRequirements.shared.userCheckStatusReached = true
         
         view.backgroundColor = .white
         navigationItem.titleView = NotificationBarHeader(title: "Confirm Order")
         navigationItem.setHidesBackButton(true, animated: true)
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelMomoOperation))
-    
+        setLabel()
+        
     }
     
+    func setLabel(){
+        if (CheckOutViewModel.checkoutType == .preapprovalconfirm){
+            self.descriptionLabel.text = "Pre-approval cofirmation is being\nprocessed. Tap button below to check confirmation status"
+            self.bottomButton.setButtonTitle(with: "I HAVE BEEN VERIFIED")
+        }
+    }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         AnalyticsHelper.recordCheckoutEvent(event: .checkoutCheckStatusViewPageCheckStatus)
@@ -217,6 +224,13 @@ extension CheckTransactionStatusViewController: ButtonActionDelegate{
         }
        
        
+        if mobileMoneyConfirmed && CheckOutViewModel.checkoutType == .preapprovalconfirm && transactionStatusCheck == .paymentSuccessful{
+            let controller = PreApprovalSuccessVcViewController(walletName: "mobile money wallet", amount: self.transactionDetails?.amountCharged ?? 0.00, delegate: self.delegate
+            )
+            self.navigationController?.pushViewController(controller, animated: true)
+            return
+        }
+        
         if  mobileMoneyConfirmed{
             if General.usePresentation{
                 self.dismiss(animated: true){
@@ -235,7 +249,11 @@ extension CheckTransactionStatusViewController: ButtonActionDelegate{
         
             if CheckOutViewModel.checkoutType == .directdebit{
                 viewModel.checkTransactionStatus(clientReference: self.transactionDetails?.clientReference ?? clientReference  ?? self.transactionId ?? "")
-            }else{
+            }else if  CheckOutViewModel.checkoutType == .preapprovalconfirm{
+                dump(transactionDetails)
+                viewModel.checkTransactionStatusPreApprovalConfirm(clientReference: self.clientReference ?? "")
+            }
+            else{
                 viewModel.checkTransactionStatus(clientReference: self.transactionId ?? "")
             }
 //
@@ -254,6 +272,7 @@ extension CheckTransactionStatusViewController: ButtonActionDelegate{
             self.bottomButton.validate(true)
             self.bottomButton.showLoader(value: false, name: "CHECK AGAIN")
             self.seconds = 5
+            setLabel()
 //            if checkStatusCount == 3{
 //                self.replaceImage(with:"statusmessage")
 //                self.bottomButton.showLoader(value: false, name: "DONE")
@@ -280,6 +299,7 @@ extension CheckTransactionStatusViewController: CheckoutTransactionStatusDelegat
     func transactionPending() {
         self.descriptionLabel.text = "Your payment is being processed. Tap the \" Check Again\" button to confirm final payment status"
         imageString = "pending_payment"
+        setLabel()
         self.bottomButton.validate(false)
         self.timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.countDownToenableButton), userInfo: nil, repeats: true)
     }

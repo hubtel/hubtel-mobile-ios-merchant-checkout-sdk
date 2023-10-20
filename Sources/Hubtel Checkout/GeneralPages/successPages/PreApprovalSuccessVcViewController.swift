@@ -10,21 +10,14 @@ import UIKit
 class PreApprovalSuccessVcViewController: UIViewController {
     
     var delegate: PaymentFinishedDelegate?
-//    init(walletName: String, amount: Double){
-//        super.init(nibName: nil, bundle: nil)
-//
-//        self.orderView.walletNameLabel.text = "Your \(walletName) will be debited with GHS \(String(format: "%.2f", amount)), after your order is confirmed"
-//
-//    }
     
-    init(walletName: String, amount: Double, delegate: PaymentFinishedDelegate?) {
-
-            super.init(nibName: nil, bundle: nil)
-
-            self.delegate = delegate
-
-            self.orderView.walletNameLabel.text = "Your \(walletName) will be debited with GHS \(String(format: "%.2f", amount)), after your order is confirmed"
-        }
+    
+    init(walletName: String, amount: Double, delegate: PaymentFinishedDelegate?){
+        super.init(nibName: nil, bundle: nil)
+        self.delegate = delegate
+        self.orderView.walletNameLabel.text = "Your \(walletName) will be debited with GHS \(String(format: "%.2f", amount)), after your order is confirmed"
+        
+    }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -78,7 +71,7 @@ class PreApprovalSuccessVcViewController: UIViewController {
 
 extension PreApprovalSuccessVcViewController: ButtonActionDelegate{
     func performAction() {
-        self.dismiss(animated: true) {
+        self.dismiss(animated: true){
             self.delegate?.checkStatus(value: .paymentSuccessful)
         }
     }

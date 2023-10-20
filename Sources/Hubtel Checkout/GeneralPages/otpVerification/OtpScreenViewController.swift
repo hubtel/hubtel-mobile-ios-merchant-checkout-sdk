@@ -23,6 +23,8 @@ class OtpScreenViewController: UIViewController {
     
     var clientReference: String?
     
+//    var delegate: PaymentFinishedDelegate?
+    
     lazy var viewModel = OtpRequestViewModel(delegate: self)
     
     let hubtelIconImage: UIImageView = {
