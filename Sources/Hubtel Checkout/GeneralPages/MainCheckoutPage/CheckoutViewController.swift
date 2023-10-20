@@ -401,9 +401,19 @@ extension CheckoutViewController: ViewStatesDelegate{
                     controller.delegate = self.delegate
                     self.navigationController?.pushViewController(controller, animated: true)
                 }else{
-                    let controller = PreApprovalSuccessVcViewController(walletName: "mobile money wallet", amount: self.viewModel.totalAmount, delegate: self.delegate
-                    )
-                    self.navigationController?.pushViewController(controller, animated: true)
+                    if self.viewModel.preApprovalResponse?.preapprovalStatus?.lowercased() == "pending"{
+                        CheckTransactionStatusViewController.openTransactionHistory(navController: self.navigationController, transactionId: self.viewModel.momoResponse?.clientReference ?? "", text: Strings.setMomoPrompt(with: self.viewModel.momoNumber ?? ""),provider: self.paymentProvider, delegate: self.delegate, transactionDetails: self.viewModel.momoResponse, clientReference: self.viewModel.order?.clientReference, amountPaid: self.viewModel.totalAmount
+                        )
+                    }else{
+                        let controller = PreApprovalSuccessVcViewController(walletName: "mobile money wallet", amount: self.viewModel.totalAmount , delegate: self.delegate
+                        )
+                        self.navigationController?.pushViewController(controller, animated: true)
+                        
+                    }
+                    
+                    
+                    
+                   
                 }
                 
                
@@ -411,7 +421,7 @@ extension CheckoutViewController: ViewStatesDelegate{
             }else if CheckOutViewModel.checkoutType == .directdebit{
                 
                 if (self.viewModel.momoResponse?.verificationType == "OTP" && self.viewModel.momoResponse?.skipOtp == false){
-                    let approvalStatus = PreApprovalResponse(preapprovalStatus: "", verificationType: self.viewModel.momoResponse?.verificationType, clientReference: self.viewModel.momoResponse?.clientReference, hubtelPreapprovalId: self.viewModel.momoResponse?.hubtelPreapprovalId, otpPrefix: self.viewModel.momoResponse?.otpPrefix, customerMsisdn: self.viewModel.momoResponse?.customerMsisdn, skipOtp: viewModel.momoResponse?.skipOtp)
+                    let approvalStatus = PreApprovalResponse(preapprovalStatus: "", verificationType: self.viewModel.momoResponse?.verificationType, clientReference: self.viewModel.momoResponse?.clientReference, hubtelPreapprovalId: self.viewModel.momoResponse?.hubtelPreapprovalId, otpPrefix: self.viewModel.momoResponse?.otpPrefix, customerMsisdn: self.viewModel.momoResponse?.customerMsisdn, skipOtp: viewModel.momoResponse?.skipOtp, clientReferenceId: self.viewModel.order?.clientReference)
                     
                     let controller = OtpScreenViewController(mobileNumber: viewModel.momoNumber ?? "", preapprovalResponse: approvalStatus, checkoutType: .directdebit, clientReference: self.viewModel.momoResponse?.clientReference ?? self.order?.clientReference)
                     controller.delegate = self.delegate

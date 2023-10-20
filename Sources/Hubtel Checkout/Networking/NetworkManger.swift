@@ -93,6 +93,7 @@ class NetworkManager{
         case confirmGhanaCard(salesId: String)
         case takeGhanaCardDetails(salesId: String, mobileNumber: String, idNumber: String)
         case addMobileMoneyWallet(salesId: String)
+        case checkStatusPreApproval(salesID: String, transactionId: String)
 
         
         var stringValue: String{
@@ -135,6 +136,8 @@ class NetworkManager{
                 return "\(NetworkManager.promptBase)/api/v1/merchant/\(salesId)/ghanacardkyc/addghanacard?PhoneNumber=\(mobileNumber)&CardID=\(idNumber)"
             case let .addMobileMoneyWallet(salesId):
                 return "\(NetworkManager.promptBase)/api/v1/merchant/\(salesId)/unifiedcheckout/addwallet"
+            case let .checkStatusPreApproval(salesID, transactionId):
+                return "https://checkout.hubtel.com/api/v1/merchant/\(salesID)/unifiedcheckout/preapprovalconfirm/statuscheck/\(transactionId)"
             }
         }
         
@@ -451,6 +454,40 @@ class NetworkManager{
         
     }
     
+    //------------------endPoint to get transactionStatus----------------------------------
+    
+    static  func checkStatusofTransactionPreApproval(salesID: String,authKey: String, clientRefrence: String, completion: @escaping (Data?, MyError?)->()){
+        
+        guard let endPoint = EndPoints.checkStatusPreApproval(salesID: salesID, transactionId: clientRefrence).url else{
+            completion(nil, .someThingHappened)
+            return
+        }
+        
+        guard let request = makeRequest(endpoint: endPoint, apiKey: authKey) else{
+            completion(nil, .someThingHappened)
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                print(response)
+                guard error == nil else{
+                    completion(nil, .someThingHappened)
+                    return
+                }
+                
+                guard let data = data  else{
+                    completion(nil, .someThingHappened)
+                    return
+                }
+                
+                completion(data, nil)
+            }
+            
+        }.resume()
+        
+        
+    }
     
     //------------endpoint to get Fees------------------------------------------------------------
     static func getFeesNew(salesId: String, authKey: String, amount: Double, channel: String, completion: @escaping(Data?, MyError?)->()){
