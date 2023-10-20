@@ -162,7 +162,7 @@ extension MandateIdIntakeViewController: ButtonActionDelegate{
 extension MandateIdIntakeViewController: ViewStatesDelegate{
     
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showNetworkProgress(isCancellable: true)
+        self.progress = showNetworkCallProgress(isCancellable: true)
     }
     
     func showErrorMessagetToUser(message: String) {

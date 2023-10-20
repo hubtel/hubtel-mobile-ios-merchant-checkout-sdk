@@ -156,7 +156,7 @@ extension GovernmentVerificationViewController: ButtonActionDelegate{
 extension GovernmentVerificationViewController: ViewStatesDelegate{
     
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showNetworkProgress(isCancellable: true)
+        self.progress = showNetworkCallProgress(isCancellable: true)
     }
     
     func handleOnlyMobileMoney() {

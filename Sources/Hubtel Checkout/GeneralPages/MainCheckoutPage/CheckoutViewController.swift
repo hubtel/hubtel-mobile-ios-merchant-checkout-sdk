@@ -39,7 +39,6 @@ public class CheckoutViewController: UIViewController {
     var enterNewMandateId: Bool = false
   
     var initCustomerMobilerNumber: String?
-   
     
     var data2 : [Section] = [
         
@@ -73,11 +72,12 @@ public class CheckoutViewController: UIViewController {
     }
     
     
-    public static func presentCheckoutInternal(from customController: UIViewController, with configuration: HubtelCheckoutConfiguration, and purchaseInfo: PurchaseInfo, delegate: PaymentFinishedDelegate, tintColor: UIColor? = nil, savedBankDetails: BankDetails?){
+    public static func presentCheckoutInternal(from customController: UIViewController, with configuration: HubtelCheckoutConfiguration, and purchaseInfo: PurchaseInfo, delegate: PaymentFinishedDelegate, tintColor: UIColor? = nil, savedBankDetails: BankDetails?) {
         UserSetupRequirements.shared.apiKey = configuration.merchantApiKey
         UserSetupRequirements.shared.callBackUrl = configuration.callbackUrl
         UserSetupRequirements.shared.salesID = configuration.salesID
         UserSetupRequirements.shared.customerPhoneNumber = purchaseInfo.customerMsisDn
+        UserSetupRequirements.isInternalMerchant = true
         let controller = CheckoutViewController()
         controller.order = purchaseInfo
         controller.viewModel.order = purchaseInfo
@@ -351,7 +351,7 @@ extension CheckoutViewController: ViewStatesDelegate{
     
     
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showNetworkProgress(isCancellable: true)
+        self.progress = showNetworkCallProgress(isCancellable: true)
     }
     
     

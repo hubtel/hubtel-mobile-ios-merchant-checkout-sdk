@@ -30,7 +30,7 @@ class ProgressViewController: UIViewController {
 
 extension UIViewController{
     
-    func showNetworkProgress(isCancellable:Bool = true, cancelCallback:(()->Void)? = nil) -> UIAlertController {
+    func showNetworkCallProgress(isCancellable:Bool = true, cancelCallback:(()->Void)? = nil) -> UIAlertController {
         let indicatorView = UIActivityIndicatorView(style: .gray)
         indicatorView.startAnimating()
         let customView = UIView(frame: CGRect(x: 0, y: 0, width: 50, height: 50))
@@ -43,8 +43,10 @@ extension UIViewController{
         let alert = UIAlertController(title: nil, message: nil, preferredStyle: .alert)
         customView.frame.origin = CGPoint(x: 110, y: 10)
         label.frame.origin = CGPoint(x: 270/2 - (label.frame.width / 2), y: 54)
-        alert.view.addSubview(customView)
-        alert.view.addSubview(label)
+        if !UserSetupRequirements.isInternalMerchant {
+            alert.view.addSubview(customView)
+            alert.view.addSubview(label)
+        }
         let progressViewController = ProgressViewController()
         progressViewController.preferredContentSize.height = 100
         alert.setValue(progressViewController, forKey: "contentViewController")

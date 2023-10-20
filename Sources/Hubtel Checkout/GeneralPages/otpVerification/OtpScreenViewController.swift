@@ -8,7 +8,7 @@
 import UIKit
 
 class OtpScreenViewController: UIViewController {
-    
+    var delegate: PaymentFinishedDelegate?
     var progress: UIAlertController?
     
     var buttonConstraint: NSLayoutConstraint!
@@ -23,7 +23,7 @@ class OtpScreenViewController: UIViewController {
     
     var clientReference: String?
     
-    var delegate: PaymentFinishedDelegate?
+//    var delegate: PaymentFinishedDelegate?
     
     lazy var viewModel = OtpRequestViewModel(delegate: self)
     
@@ -207,6 +207,8 @@ class OtpScreenViewController: UIViewController {
     
 }
 
+
+
 extension OtpScreenViewController: ViewStatesDelegate{
     
     func dismissLoaderToPerformMomoPayment() {
@@ -223,7 +225,7 @@ extension OtpScreenViewController: ViewStatesDelegate{
     }
     
     func showLoadingStateWhileMakingNetworkRequest(with value: Bool) {
-        self.progress = showNetworkProgress(isCancellable: true)
+        self.progress = showNetworkCallProgress(isCancellable: true)
     }
     
     func showErrorMessagetToUser(message: String) {

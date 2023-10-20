@@ -8,7 +8,7 @@
 import Foundation
 import UIKit
 
-enum CellStyles{
+enum CellStyles {
     case receiptHeader
     case payWithTitle
     case paymentChoiceHeader
@@ -18,7 +18,7 @@ enum CellStyles{
     case otherPaymentMethods
 }
 
-enum PaymentType{
+enum PaymentType {
     case momo
     case bank
     case gmoney
@@ -27,7 +27,7 @@ enum PaymentType{
     case hubtel
 }
 
-struct Section: Equatable{
+struct Section: Equatable {
     let title, imageName: String
     var options: [Option] = []
    var cellStyle: CellStyles
@@ -40,12 +40,12 @@ struct Section: Equatable{
     
 }
 
-struct Option{
+struct Option {
     let title, image: String
     let cellStyle: CellStyles
 }
 
-public struct SetupPayerAuthRequest: Codable{
+public struct SetupPayerAuthRequest: Codable {
     let amount: Double
     let cardHolderName, cardNumber, cvv: String
     let expiryMonth, expiryYear: String
@@ -56,20 +56,20 @@ public struct SetupPayerAuthRequest: Codable{
     
 }
 
-public enum PaymentStatus{
+public enum PaymentStatus {
     case userCancelledPayment
     case paymentFailed
     case paymentSuccessful
     case unknown
 }
 
-public struct MobilePaymentProvider{
+public struct MobilePaymentProvider {
     let title: String
     let provider: String
 }
 
 
-public struct HubtelCheckoutConfiguration{
+public struct HubtelCheckoutConfiguration {
     var salesID: String
     var callbackUrl: String
     var merchantApiKey: String
@@ -89,6 +89,7 @@ class UserSetupRequirements{
     var userCheckStatusReached: Bool = false
     var userTransactionFailed: Bool = false
     var userTransactionSucceeded: Bool = false
+    static var isInternalMerchant = false
     private init(salesID: String = "", apiKey: String = "", callBackUrl: String = ""){
         self.salesID = salesID
         self.apiKey = apiKey
