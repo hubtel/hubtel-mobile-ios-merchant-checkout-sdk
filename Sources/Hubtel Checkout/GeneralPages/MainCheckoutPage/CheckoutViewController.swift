@@ -401,7 +401,7 @@ extension CheckoutViewController: ViewStatesDelegate{
                     controller.delegate = self.delegate
                     self.navigationController?.pushViewController(controller, animated: true)
                 }else{
-                    if self.viewModel.preApprovalResponse?.preapprovalStatus?.lowercased() == "pending"{
+                    if self.viewModel.preApprovalResponse?.preapprovalStatus?.lowercased() == "pending" || self.viewModel.preApprovalResponse?.preapprovalStatus == nil{
                         CheckTransactionStatusViewController.openTransactionHistory(navController: self.navigationController, transactionId: self.viewModel.momoResponse?.clientReference ?? "", text: Strings.setMomoPrompt(with: self.viewModel.momoNumber ?? ""),provider: self.paymentProvider, delegate: self.delegate, transactionDetails: self.viewModel.momoResponse, clientReference: self.viewModel.order?.clientReference, amountPaid: self.viewModel.totalAmount
                         )
                     }else{
@@ -1081,7 +1081,7 @@ extension CheckoutViewController{
         
         switch CheckOutViewModel.checkoutType{
         case .preapprovalconfirm:
-            viewModel.makePreapprovalConfirm(channel: "\(channel)-direct-debit", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text ?? "", clientReference: order?.clientReference ?? "")
+            viewModel.makePreapprovalConfirm(body: momoRequest)
         case .receivemoneyprompt:
             let momoRequest = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, channel: channel, amount: formattedAmount, primaryCallbackUrl: callbackUrl, description: order?.purchaseDescription, clientReference: order?.clientReference, mandateId: nil)
             viewModel.paywithMomo(request: momoRequest)
@@ -1110,6 +1110,8 @@ extension CheckoutViewController{
        
         let directDebitRequest  = MakeDirectDebitCallBody(channel: "\(channel)-direct-debit", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, primaryCallbackUrl: callbackUrl, clientReference: order?.clientReference, amount:formattedAmount, description: order?.purchaseDescription)
         
+        let preApprovalCall = MobileMoneyPaymentRequest(customerName: "", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text, channel: channel.contains("tigo") ? channel : "\(channel)-direct-debit", amount: formattedAmount, primaryCallbackUrl: callbackUrl, description: order?.purchaseDescription, clientReference: order?.clientReference, mandateId: nil)
+        
         viewModel.momoNumber = customerMobileNumber ?? (textField as? UITextField)?.text
         
         if paymentType == .zeepay{
@@ -1132,7 +1134,8 @@ extension CheckoutViewController{
                 continueToKycFlow(mobileNumber: mobileNumberText ?? "")
                 return
             }
-            viewModel.makePreapprovalConfirm(channel: "\(channel)-direct-debit", customerMsisdn: customerMobileNumber ?? (textField as? UITextField)?.text ?? "", clientReference: order?.clientReference ?? "")
+           
+            viewModel.makePreapprovalConfirm(body: preApprovalCall)
         default:
             viewModel.paywithMomo(request: momoRequest)
         }

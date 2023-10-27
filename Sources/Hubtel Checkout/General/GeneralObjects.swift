@@ -637,9 +637,11 @@ struct ChannelFetchResponse: Codable{
     let requireNationalID: Bool?
     let isHubtelInternalMerchant: Bool?
     var merchantRequiresKyc: Bool {
-        return true
+        return requireNationalID ?? false
     }
 }
+
+
 
 
 @objc class VerificationResponse: NSObject, Codable {

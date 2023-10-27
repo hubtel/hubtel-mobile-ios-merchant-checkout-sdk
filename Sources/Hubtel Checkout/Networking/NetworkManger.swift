@@ -85,7 +85,7 @@ class NetworkManager{
         case feeCalculate(merchantId: String, channelPassed: String, amount:Double)
         case checkStatusNew(merchantId: String, clientReference: String)
         case getFeesNew(merchantId: String, channel: String, amount: Double)
-        case preapprovalConfirm(merchantId: String, channel: String, customermsisdn: String, clientReference: String, callbackUrl: String)
+        case preapprovalConfirm(merchantId: String)
         case otpVerify(merchantId:String)
         case getCustomerWallets(merchantId: String, phoneNumber: String)
         case newPaymentChannelsEndPoint(merchantId: String)
@@ -119,9 +119,9 @@ class NetworkManager{
             case let .checkStatusNew(merchantId, clientReference):
                 return "\(NetworkManager.promptBase)/api/v1/merchant/\(merchantId)/unifiedcheckout/statuscheck/?clientReference=\(clientReference)"
             case let .getFeesNew(merchantId, channel, amount):
-                return "\(NetworkManager.promptBase)/api/v1/merchant/\(merchantId)/unifiedcheckout/feecalculation?ChannelPassed=\(channel)&Amount=\(amount)"
-            case let .preapprovalConfirm(merchantId, channel, customermsisdn, clientReference, callbackUrl):
-                return "https://checkout.hubtel.com/api/v1/merchant/\(merchantId)/unifiedcheckout/preapprovalconfirm?Channel=\(channel)&CustomerMsisdn=\(customermsisdn)&ClientReference=\(clientReference)&CallbackUrl=\(callbackUrl)"
+                return "\(NetworkManager.promptBase)/api/v1/merchant/\(merchantId)/unifiedcheckout/feecalculation?channel=\(channel)&Amount=\(amount)"
+            case let .preapprovalConfirm(merchantId):
+                return "https://checkout.hubtel.com/api/v1/merchant/\(merchantId)/unifiedcheckout/preapprovalconfirm"
             case let .otpVerify(merchantId):
                 return "https://checkout.hubtel.com/api/v1/merchant/\(merchantId)/unifiedcheckout/verifyotp"
             case let .getCustomerWallets(merchantId, phoneNumber):
@@ -523,16 +523,16 @@ class NetworkManager{
     
     //------------endPoint for preapproval---------------------------------------------------------------------
   
-    static func preApprovalConfirm(merchantId: String, authKey: String, amount: Double, clientReference: String, customerMsisdn: String, channel:String, callbackUrl: String, completion: @escaping(Data?, MyError?)->()){
+    static func preApprovalConfirm(merchantId: String, authKey: String, body: MobileMoneyPaymentRequest, completion: @escaping(Data?, MyError?)->()){
         
-        guard let endPoint = EndPoints.preapprovalConfirm(merchantId: merchantId, channel: channel, customermsisdn: customerMsisdn, clientReference: clientReference, callbackUrl: callbackUrl).url else{
+        guard let endPoint = EndPoints.preapprovalConfirm(merchantId: merchantId).url else{
             completion(nil, .someThingHappened)
             return
         }
         
         dump(endPoint)
         
-        guard let request = makeRequest(endpoint: endPoint, apiKey: authKey) else{
+        guard let request = makeRequest(endpoint: endPoint, apiKey: authKey, body: body) else{
             completion(nil, .someThingHappened)
             return
         }

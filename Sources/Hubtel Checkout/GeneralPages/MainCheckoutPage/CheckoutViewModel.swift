@@ -571,9 +571,9 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
     
     
     
-    func makePreapprovalConfirm(channel: String, customerMsisdn: String, clientReference: String){
+    func makePreapprovalConfirm( body: MobileMoneyPaymentRequest){
         delegate?.showLoadingStateWhileMakingNetworkRequest?(with: true)
-        NetworkManager.preApprovalConfirm(merchantId: salesID ?? "", authKey: merchantApiKey ?? "", amount: totalAmount, clientReference: clientReference, customerMsisdn: customerMsisdn, channel: channel, callbackUrl: UserSetupRequirements.shared.callBackUrl) { data, error in
+        NetworkManager.preApprovalConfirm(merchantId: salesID ?? "", authKey: merchantApiKey ?? "" ,body: body) { data, error in
             
             
             guard error == nil else {
