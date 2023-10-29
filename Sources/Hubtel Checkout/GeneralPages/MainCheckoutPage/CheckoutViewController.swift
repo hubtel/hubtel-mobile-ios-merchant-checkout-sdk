@@ -210,10 +210,10 @@ public class CheckoutViewController: UIViewController {
             let isKeyboardShowing = notification.name == UIResponder.keyboardWillShowNotification
             if isKeyboardShowing {
                 bottomConstraint?.constant =  -keyboardFrame!.height
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.tableView.scrollToRow(at: IndexPath(row: 4, section: 0), at: .top, animated: true
-                    )
-                }
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+//                    self.tableView.scrollToRow(at: IndexPath(row: 4, section: 0), at: .top, animated: true
+//                    )
+//                }
             }else{
                 bottomConstraint?.constant =  0
             }
