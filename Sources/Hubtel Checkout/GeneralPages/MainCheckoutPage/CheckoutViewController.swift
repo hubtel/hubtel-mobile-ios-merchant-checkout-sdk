@@ -217,9 +217,9 @@ public class CheckoutViewController: UIViewController {
             }else{
                 bottomConstraint?.constant =  0
             }
-            UIView.animate(withDuration: 0.5, animations: { () -> Void in
-                self.view.layoutIfNeeded()
-            })
+//            UIView.animate(withDuration: 0.5, animations: { () -> Void in
+//                self.view.layoutIfNeeded()
+//            })
         }
     }
     
