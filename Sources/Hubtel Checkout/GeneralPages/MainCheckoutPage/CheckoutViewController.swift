@@ -210,7 +210,7 @@ public class CheckoutViewController: UIViewController {
             let isKeyboardShowing = notification.name == UIResponder.keyboardWillShowNotification
             if isKeyboardShowing {
                 bottomConstraint?.constant =  -keyboardFrame!.height
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.tableView.scrollToRow(at: IndexPath(row: 2, section: 0), at: .bottom, animated: true
                     )
                 }
@@ -957,7 +957,7 @@ extension CheckoutViewController: ShowMenuItemsDelegate{
     func showMenuForWallet() {
         
         tableView.performBatchUpdates(nil)
-//        self.tableView.scrollToRow(at: IndexPath(row: 3, section: 0), at: .bottom, animated: true)
+        self.tableView.scrollToRow(at: IndexPath(row: 3, section: 0), at: .bottom, animated: true)
 //        
 //        self.view.layoutIfNeeded()
     }
