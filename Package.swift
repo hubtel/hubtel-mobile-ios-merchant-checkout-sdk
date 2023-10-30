@@ -6,6 +6,7 @@ import PackageDescription
 
 let package = Package(
     name: "Hubtel Checkout",
+    platforms: [.iOS(.v12)],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
@@ -26,11 +27,7 @@ let package = Package(
                 .process("Resources/NunitoSans-Regular.ttf"),
                 .process("Resources/NunitoSans-ExtraBold.ttf")
                
-            ],
-            swiftSettings: [
-                   .define("DEPLOYMENT_TARGET_IOS_ARM64", .when(platforms: [.iOS], configuration: .release)),
-                   .define("DEPLOYMENT_TARGET_SIMULATOR", .when(platforms: [.iOS], configuration: .release))
-               ]
+            ]
         ),
         .testTarget(
             name: "Hubtel CheckoutTests",
