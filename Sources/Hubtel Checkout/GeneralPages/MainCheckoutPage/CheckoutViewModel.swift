@@ -331,7 +331,7 @@ class CheckOutViewModel: CheckoutRequirements, PaymentProtocol{
         
         if let details = details{
             
-        return SetupPayerAuthRequest(amount: totalAmount, cardHolderName: details.cardHolderName, cardNumber: details.cardHolderNumber, cvv: details.cvv, expiryMonth: details.expiryMonth, expiryYear: details.expiryYear, customerMsisdn: order?.customerMsisDn ?? "", description: order?.purchaseDescription ?? "", clientReference: order?.clientReference ?? uuidString, callbackUrl: callbackUrl ?? "")
+            return SetupPayerAuthRequest(amount: order?.amount ?? 0.00, cardHolderName: details.cardHolderName, cardNumber: details.cardHolderNumber, cvv: details.cvv, expiryMonth: details.expiryMonth, expiryYear: details.expiryYear, customerMsisdn: order?.customerMsisDn ?? "", description: order?.purchaseDescription ?? "", clientReference: order?.clientReference ?? uuidString, callbackUrl: callbackUrl ?? "")
             
         }else{
             
