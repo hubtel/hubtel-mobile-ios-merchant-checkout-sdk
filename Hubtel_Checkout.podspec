@@ -1,5 +1,5 @@
 Pod::Spec.new do |s|
-    s.name             = 'HubtelMobileMerchantCheckoutSdk'
+    s.name             = 'Hubtel_Checkout'
     s.version          = '0.1.0'
     s.summary          = 'The Hubtel Checkout Library is a convenient and easy-to-use library that simplifies the process of implementing a checkout flow in your iOS application.'
   
