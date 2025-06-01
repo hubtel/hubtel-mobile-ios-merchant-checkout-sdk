@@ -45,7 +45,7 @@ class FailedTransactionViewController: UIViewController {
     
     let momoTransactionFailureCard = SuccessOverLayView(labelString:"Transaction Failed", imageString: "circle")
     
-    lazy var tab: HubCustomTabView = HubCustomTabView(labelString: "Change Wallet") {
+    lazy var customTab: HubCustomTabView = HubCustomTabView(labelString: "Change Wallet") {
         self.navigationController?.popToRootViewController(animated: true)
     }
     
@@ -105,9 +105,9 @@ class FailedTransactionViewController: UIViewController {
           
           
           let tabConstraints = [
-              tab.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-              tab.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-              tab.topAnchor.constraint(equalTo:transactionType == .bankTransaction ? card.bottomAnchor : momoTransactionFailureCard.bottomAnchor, constant: 50)
+            customTab.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            customTab.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            customTab.topAnchor.constraint(equalTo:transactionType == .bankTransaction ? card.bottomAnchor : momoTransactionFailureCard.bottomAnchor, constant: 50)
           ]
           NSLayoutConstraint.activate(tabConstraints)
       }
