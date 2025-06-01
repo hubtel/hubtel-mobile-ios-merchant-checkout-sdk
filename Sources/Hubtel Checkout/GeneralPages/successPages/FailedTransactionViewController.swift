@@ -45,7 +45,7 @@ class FailedTransactionViewController: UIViewController {
     
     let momoTransactionFailureCard = SuccessOverLayView(labelString:"Transaction Failed", imageString: "circle")
     
-    lazy var tab: CustomTabView = CustomTabView(labelString: "Change Wallet") {
+    lazy var tab: HubCustomTabView = HubCustomTabView(labelString: "Change Wallet") {
         self.navigationController?.popToRootViewController(animated: true)
     }
     

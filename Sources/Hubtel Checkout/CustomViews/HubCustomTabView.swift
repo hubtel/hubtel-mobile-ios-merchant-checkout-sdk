@@ -7,7 +7,7 @@
 
 import UIKit
 
-class CustomTabView: UIView {
+class HubCustomTabView: UIView {
     
     var action: ()->Void = {}
     
