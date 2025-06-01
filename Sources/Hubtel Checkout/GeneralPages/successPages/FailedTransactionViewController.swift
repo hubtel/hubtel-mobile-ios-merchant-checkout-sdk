@@ -53,7 +53,7 @@ class FailedTransactionViewController: UIViewController {
     
       override func viewDidLoad() {
           super.viewDidLoad()
-          self.view.addSubviews(topHeader, bottomButton, tab)
+          self.view.addSubviews(topHeader, bottomButton, customTab)
           if transactionType == .bankTransaction{
               self.view.addSubview(card)
           }else{
